@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Http\Requests\ProductRequest;
+use App\Managers\FileManager;
 
 class ProductsController extends Controller
 {
+
+
     public function index()
     {
         $products = Product::query()->with(['category', 'status'])->get();
@@ -76,7 +79,6 @@ class ProductsController extends Controller
             'size' => ['nullable'],
         ]);
 
-        $product->update($request->all());
 
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
             //    Įkeliame failą į 'public_html/img/products' aplanką
@@ -85,8 +87,8 @@ class ProductsController extends Controller
             $image->move(public_path('img/products'), $clientOriginalName);
             $product->image = '/img/products/' . $clientOriginalName;
             $product->save();
-        }
 
+    }
         return redirect()->route('products.show', $product);
     }
 

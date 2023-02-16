@@ -1,0 +1,3481 @@
+Subject: [PATCH] Laravel Breeze module
+---
+Index: laravel_failai/app/Http/Controllers/Auth/AuthenticatedSessionController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/AuthenticatedSessionController.php b/laravel_failai/app/Http/Controllers/Auth/AuthenticatedSessionController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/AuthenticatedSessionController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,48 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Http\Requests\Auth\LoginRequest;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Auth;
++use Illuminate\View\View;
++
++class AuthenticatedSessionController extends Controller
++{
++    /**
++     * Display the login view.
++     */
++    public function create(): View
++    {
++        return view('auth.login');
++    }
++
++    /**
++     * Handle an incoming authentication request.
++     */
++    public function store(LoginRequest $request): RedirectResponse
++    {
++        $request->authenticate();
++
++        $request->session()->regenerate();
++
++        return redirect()->intended(RouteServiceProvider::HOME);
++    }
++
++    /**
++     * Destroy an authenticated session.
++     */
++    public function destroy(Request $request): RedirectResponse
++    {
++        Auth::guard('web')->logout();
++
++        $request->session()->invalidate();
++
++        $request->session()->regenerateToken();
++
++        return redirect('/');
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/ConfirmablePasswordController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/ConfirmablePasswordController.php b/laravel_failai/app/Http/Controllers/Auth/ConfirmablePasswordController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/ConfirmablePasswordController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,41 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Auth;
++use Illuminate\Validation\ValidationException;
++use Illuminate\View\View;
++
++class ConfirmablePasswordController extends Controller
++{
++    /**
++     * Show the confirm password view.
++     */
++    public function show(): View
++    {
++        return view('auth.confirm-password');
++    }
++
++    /**
++     * Confirm the user's password.
++     */
++    public function store(Request $request): RedirectResponse
++    {
++        if (! Auth::guard('web')->validate([
++            'email' => $request->user()->email,
++            'password' => $request->password,
++        ])) {
++            throw ValidationException::withMessages([
++                'password' => __('auth.password'),
++            ]);
++        }
++
++        $request->session()->put('auth.password_confirmed_at', time());
++
++        return redirect()->intended(RouteServiceProvider::HOME);
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/EmailVerificationNotificationController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/EmailVerificationNotificationController.php b/laravel_failai/app/Http/Controllers/Auth/EmailVerificationNotificationController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/EmailVerificationNotificationController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,25 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++
++class EmailVerificationNotificationController extends Controller
++{
++    /**
++     * Send a new email verification notification.
++     */
++    public function store(Request $request): RedirectResponse
++    {
++        if ($request->user()->hasVerifiedEmail()) {
++            return redirect()->intended(RouteServiceProvider::HOME);
++        }
++
++        $request->user()->sendEmailVerificationNotification();
++
++        return back()->with('status', 'verification-link-sent');
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/EmailVerificationPromptController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/EmailVerificationPromptController.php b/laravel_failai/app/Http/Controllers/Auth/EmailVerificationPromptController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/EmailVerificationPromptController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,22 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\View\View;
++
++class EmailVerificationPromptController extends Controller
++{
++    /**
++     * Display the email verification prompt.
++     */
++    public function __invoke(Request $request): RedirectResponse|View
++    {
++        return $request->user()->hasVerifiedEmail()
++                    ? redirect()->intended(RouteServiceProvider::HOME)
++                    : view('auth.verify-email');
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/NewPasswordController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/NewPasswordController.php b/laravel_failai/app/Http/Controllers/Auth/NewPasswordController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/NewPasswordController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,61 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use Illuminate\Auth\Events\PasswordReset;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Hash;
++use Illuminate\Support\Facades\Password;
++use Illuminate\Support\Str;
++use Illuminate\Validation\Rules;
++use Illuminate\View\View;
++
++class NewPasswordController extends Controller
++{
++    /**
++     * Display the password reset view.
++     */
++    public function create(Request $request): View
++    {
++        return view('auth.reset-password', ['request' => $request]);
++    }
++
++    /**
++     * Handle an incoming new password request.
++     *
++     * @throws \Illuminate\Validation\ValidationException
++     */
++    public function store(Request $request): RedirectResponse
++    {
++        $request->validate([
++            'token' => ['required'],
++            'email' => ['required', 'email'],
++            'password' => ['required', 'confirmed', Rules\Password::defaults()],
++        ]);
++
++        // Here we will attempt to reset the user's password. If it is successful we
++        // will update the password on an actual user model and persist it to the
++        // database. Otherwise we will parse the error and return the response.
++        $status = Password::reset(
++            $request->only('email', 'password', 'password_confirmation', 'token'),
++            function ($user) use ($request) {
++                $user->forceFill([
++                    'password' => Hash::make($request->password),
++                    'remember_token' => Str::random(60),
++                ])->save();
++
++                event(new PasswordReset($user));
++            }
++        );
++
++        // If the password was successfully reset, we will redirect the user back to
++        // the application's home authenticated view. If there is an error we can
++        // redirect them back to where they came from with their error message.
++        return $status == Password::PASSWORD_RESET
++                    ? redirect()->route('login')->with('status', __($status))
++                    : back()->withInput($request->only('email'))
++                            ->withErrors(['email' => __($status)]);
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/PasswordController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/PasswordController.php b/laravel_failai/app/Http/Controllers/Auth/PasswordController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/PasswordController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,29 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Hash;
++use Illuminate\Validation\Rules\Password;
++
++class PasswordController extends Controller
++{
++    /**
++     * Update the user's password.
++     */
++    public function update(Request $request): RedirectResponse
++    {
++        $validated = $request->validateWithBag('updatePassword', [
++            'current_password' => ['required', 'current_password'],
++            'password' => ['required', Password::defaults(), 'confirmed'],
++        ]);
++
++        $request->user()->update([
++            'password' => Hash::make($validated['password']),
++        ]);
++
++        return back()->with('status', 'password-updated');
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/PasswordResetLinkController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/PasswordResetLinkController.php b/laravel_failai/app/Http/Controllers/Auth/PasswordResetLinkController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/PasswordResetLinkController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,44 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Password;
++use Illuminate\View\View;
++
++class PasswordResetLinkController extends Controller
++{
++    /**
++     * Display the password reset link request view.
++     */
++    public function create(): View
++    {
++        return view('auth.forgot-password');
++    }
++
++    /**
++     * Handle an incoming password reset link request.
++     *
++     * @throws \Illuminate\Validation\ValidationException
++     */
++    public function store(Request $request): RedirectResponse
++    {
++        $request->validate([
++            'email' => ['required', 'email'],
++        ]);
++
++        // We will send the password reset link to this user. Once we have attempted
++        // to send the link, we will examine the response then see the message we
++        // need to show to the user. Finally, we'll send out a proper response.
++        $status = Password::sendResetLink(
++            $request->only('email')
++        );
++
++        return $status == Password::RESET_LINK_SENT
++                    ? back()->with('status', __($status))
++                    : back()->withInput($request->only('email'))
++                            ->withErrors(['email' => __($status)]);
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/RegisteredUserController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/RegisteredUserController.php b/laravel_failai/app/Http/Controllers/Auth/RegisteredUserController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/RegisteredUserController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,51 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Models\User;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Auth\Events\Registered;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Auth;
++use Illuminate\Support\Facades\Hash;
++use Illuminate\Validation\Rules;
++use Illuminate\View\View;
++
++class RegisteredUserController extends Controller
++{
++    /**
++     * Display the registration view.
++     */
++    public function create(): View
++    {
++        return view('auth.register');
++    }
++
++    /**
++     * Handle an incoming registration request.
++     *
++     * @throws \Illuminate\Validation\ValidationException
++     */
++    public function store(Request $request): RedirectResponse
++    {
++        $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
++            'password' => ['required', 'confirmed', Rules\Password::defaults()],
++        ]);
++
++        $user = User::create([
++            'name' => $request->name,
++            'email' => $request->email,
++            'password' => Hash::make($request->password),
++        ]);
++
++        event(new Registered($user));
++
++        Auth::login($user);
++
++        return redirect(RouteServiceProvider::HOME);
++    }
++}
+Index: laravel_failai/app/Http/Controllers/Auth/VerifyEmailController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/Auth/VerifyEmailController.php b/laravel_failai/app/Http/Controllers/Auth/VerifyEmailController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/Auth/VerifyEmailController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,28 @@
++<?php
++
++namespace App\Http\Controllers\Auth;
++
++use App\Http\Controllers\Controller;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Auth\Events\Verified;
++use Illuminate\Foundation\Auth\EmailVerificationRequest;
++use Illuminate\Http\RedirectResponse;
++
++class VerifyEmailController extends Controller
++{
++    /**
++     * Mark the authenticated user's email address as verified.
++     */
++    public function __invoke(EmailVerificationRequest $request): RedirectResponse
++    {
++        if ($request->user()->hasVerifiedEmail()) {
++            return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
++        }
++
++        if ($request->user()->markEmailAsVerified()) {
++            event(new Verified($request->user()));
++        }
++
++        return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
++    }
++}
+Index: laravel_failai/app/Http/Controllers/ProfileController.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Controllers/ProfileController.php b/laravel_failai/app/Http/Controllers/ProfileController.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Controllers/ProfileController.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,60 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Http\Requests\ProfileUpdateRequest;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Auth;
++use Illuminate\Support\Facades\Redirect;
++use Illuminate\View\View;
++
++class ProfileController extends Controller
++{
++    /**
++     * Display the user's profile form.
++     */
++    public function edit(Request $request): View
++    {
++        return view('profile.edit', [
++            'user' => $request->user(),
++        ]);
++    }
++
++    /**
++     * Update the user's profile information.
++     */
++    public function update(ProfileUpdateRequest $request): RedirectResponse
++    {
++        $request->user()->fill($request->validated());
++
++        if ($request->user()->isDirty('email')) {
++            $request->user()->email_verified_at = null;
++        }
++
++        $request->user()->save();
++
++        return Redirect::route('profile.edit')->with('status', 'profile-updated');
++    }
++
++    /**
++     * Delete the user's account.
++     */
++    public function destroy(Request $request): RedirectResponse
++    {
++        $request->validateWithBag('userDeletion', [
++            'password' => ['required', 'current-password'],
++        ]);
++
++        $user = $request->user();
++
++        Auth::logout();
++
++        $user->delete();
++
++        $request->session()->invalidate();
++        $request->session()->regenerateToken();
++
++        return Redirect::to('/');
++    }
++}
+Index: laravel_failai/app/Http/Requests/Auth/LoginRequest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Requests/Auth/LoginRequest.php b/laravel_failai/app/Http/Requests/Auth/LoginRequest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Requests/Auth/LoginRequest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,85 @@
++<?php
++
++namespace App\Http\Requests\Auth;
++
++use Illuminate\Auth\Events\Lockout;
++use Illuminate\Foundation\Http\FormRequest;
++use Illuminate\Support\Facades\Auth;
++use Illuminate\Support\Facades\RateLimiter;
++use Illuminate\Support\Str;
++use Illuminate\Validation\ValidationException;
++
++class LoginRequest extends FormRequest
++{
++    /**
++     * Determine if the user is authorized to make this request.
++     */
++    public function authorize(): bool
++    {
++        return true;
++    }
++
++    /**
++     * Get the validation rules that apply to the request.
++     *
++     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
++     */
++    public function rules(): array
++    {
++        return [
++            'email' => ['required', 'string', 'email'],
++            'password' => ['required', 'string'],
++        ];
++    }
++
++    /**
++     * Attempt to authenticate the request's credentials.
++     *
++     * @throws \Illuminate\Validation\ValidationException
++     */
++    public function authenticate(): void
++    {
++        $this->ensureIsNotRateLimited();
++
++        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
++            RateLimiter::hit($this->throttleKey());
++
++            throw ValidationException::withMessages([
++                'email' => trans('auth.failed'),
++            ]);
++        }
++
++        RateLimiter::clear($this->throttleKey());
++    }
++
++    /**
++     * Ensure the login request is not rate limited.
++     *
++     * @throws \Illuminate\Validation\ValidationException
++     */
++    public function ensureIsNotRateLimited(): void
++    {
++        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
++            return;
++        }
++
++        event(new Lockout($this));
++
++        $seconds = RateLimiter::availableIn($this->throttleKey());
++
++        throw ValidationException::withMessages([
++            'email' => trans('auth.throttle', [
++                'seconds' => $seconds,
++                'minutes' => ceil($seconds / 60),
++            ]),
++        ]);
++    }
++
++    /**
++     * Get the rate limiting throttle key for the request.
++     */
++    public function throttleKey(): string
++    {
++        return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
++    }
++}
+Index: laravel_failai/app/Http/Requests/ProfileUpdateRequest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Http/Requests/ProfileUpdateRequest.php b/laravel_failai/app/Http/Requests/ProfileUpdateRequest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/app/Http/Requests/ProfileUpdateRequest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,23 @@
++<?php
++
++namespace App\Http\Requests;
++
++use App\Models\User;
++use Illuminate\Foundation\Http\FormRequest;
++use Illuminate\Validation\Rule;
++
++class ProfileUpdateRequest extends FormRequest
++{
++    /**
++     * Get the validation rules that apply to the request.
++     *
++     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
++     */
++    public function rules(): array
++    {
++        return [
++            'name' => ['string', 'max:255'],
++            'email' => ['email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
++        ];
++    }
++}
+Index: laravel_failai/app/Models/User.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Models/User.php b/laravel_failai/app/Models/User.php
+--- a/laravel_failai/app/Models/User.php	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/app/Models/User.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -3,6 +3,7 @@
+ namespace App\Models;
+ 
+ use Carbon\Carbon;
++use Illuminate\Contracts\Auth\MustVerifyEmail;
+ use Illuminate\Database\Eloquent\Factories\HasFactory;
+ use Illuminate\Database\Eloquent\Relations\HasMany;
+ use Illuminate\Database\Eloquent\Relations\HasOne;
+@@ -24,7 +25,7 @@
+  * @property Carbon $created_at
+  * @property Carbon $updated_at
+  */
+-class User extends Authenticatable
++class User extends Authenticatable implements MustVerifyEmail
+ {
+     use HasApiTokens;
+     use HasFactory;
+Index: laravel_failai/app/Providers/RouteServiceProvider.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/app/Providers/RouteServiceProvider.php b/laravel_failai/app/Providers/RouteServiceProvider.php
+--- a/laravel_failai/app/Providers/RouteServiceProvider.php	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/app/Providers/RouteServiceProvider.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -17,7 +17,7 @@
+      *
+      * @var string
+      */
+-    public const HOME = '/home';
++    public const HOME = '/admin';
+ 
+     /**
+      * Define your route model bindings, pattern filters, and other route configuration.
+Index: laravel_failai/composer.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/composer.json b/laravel_failai/composer.json
+--- a/laravel_failai/composer.json	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/composer.json	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -9,12 +9,12 @@
+         "guzzlehttp/guzzle": "^7.2",
+         "laravel/framework": "^9.19",
+         "laravel/sanctum": "^3.0",
+-        "laravel/tinker": "^2.7",
+-      "ext-http": "*"
++        "laravel/tinker": "^2.7"
+     },
+     "require-dev": {
+         "fakerphp/faker": "^1.9.1",
+         "jason-guru/laravel-make-repository": "^0.0.3",
++        "laravel/breeze": "^1.19",
+         "laravel/pint": "^1.0",
+         "laravel/sail": "^1.0.1",
+         "mockery/mockery": "^1.4.4",
+Index: laravel_failai/package-lock.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/package-lock.json b/laravel_failai/package-lock.json
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/package-lock.json	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,947 @@
++{
++    "requires": true,
++    "lockfileVersion": 1,
++    "dependencies": {
++        "@esbuild/android-arm": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.16.17.tgz",
++            "integrity": "sha512-N9x1CMXVhtWEAMS7pNNONyA14f71VPQN9Cnavj1XQh6T7bskqiLLrSca4O0Vr8Wdcga943eThxnVp3JLnBMYtw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/android-arm64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.16.17.tgz",
++            "integrity": "sha512-MIGl6p5sc3RDTLLkYL1MyL8BMRN4tLMRCn+yRJJmEDvYZ2M7tmAf80hx1kbNEUX2KJ50RRtxZ4JHLvCfuB6kBg==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/android-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.16.17.tgz",
++            "integrity": "sha512-a3kTv3m0Ghh4z1DaFEuEDfz3OLONKuFvI4Xqczqx4BqLyuFaFkuaG4j2MtA6fuWEFeC5x9IvqnX7drmRq/fyAQ==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/darwin-arm64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.16.17.tgz",
++            "integrity": "sha512-/2agbUEfmxWHi9ARTX6OQ/KgXnOWfsNlTeLcoV7HSuSTv63E4DqtAc+2XqGw1KHxKMHGZgbVCZge7HXWX9Vn+w==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/darwin-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.16.17.tgz",
++            "integrity": "sha512-2By45OBHulkd9Svy5IOCZt376Aa2oOkiE9QWUK9fe6Tb+WDr8hXL3dpqi+DeLiMed8tVXspzsTAvd0jUl96wmg==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/freebsd-arm64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.16.17.tgz",
++            "integrity": "sha512-mt+cxZe1tVx489VTb4mBAOo2aKSnJ33L9fr25JXpqQqzbUIw/yzIzi+NHwAXK2qYV1lEFp4OoVeThGjUbmWmdw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/freebsd-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.16.17.tgz",
++            "integrity": "sha512-8ScTdNJl5idAKjH8zGAsN7RuWcyHG3BAvMNpKOBaqqR7EbUhhVHOqXRdL7oZvz8WNHL2pr5+eIT5c65kA6NHug==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-arm": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.16.17.tgz",
++            "integrity": "sha512-iihzrWbD4gIT7j3caMzKb/RsFFHCwqqbrbH9SqUSRrdXkXaygSZCZg1FybsZz57Ju7N/SHEgPyaR0LZ8Zbe9gQ==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-arm64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.16.17.tgz",
++            "integrity": "sha512-7S8gJnSlqKGVJunnMCrXHU9Q8Q/tQIxk/xL8BqAP64wchPCTzuM6W3Ra8cIa1HIflAvDnNOt2jaL17vaW+1V0g==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-ia32": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.16.17.tgz",
++            "integrity": "sha512-kiX69+wcPAdgl3Lonh1VI7MBr16nktEvOfViszBSxygRQqSpzv7BffMKRPMFwzeJGPxcio0pdD3kYQGpqQ2SSg==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-loong64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.16.17.tgz",
++            "integrity": "sha512-dTzNnQwembNDhd654cA4QhbS9uDdXC3TKqMJjgOWsC0yNCbpzfWoXdZvp0mY7HU6nzk5E0zpRGGx3qoQg8T2DQ==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-mips64el": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.16.17.tgz",
++            "integrity": "sha512-ezbDkp2nDl0PfIUn0CsQ30kxfcLTlcx4Foz2kYv8qdC6ia2oX5Q3E/8m6lq84Dj/6b0FrkgD582fJMIfHhJfSw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-ppc64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.16.17.tgz",
++            "integrity": "sha512-dzS678gYD1lJsW73zrFhDApLVdM3cUF2MvAa1D8K8KtcSKdLBPP4zZSLy6LFZ0jYqQdQ29bjAHJDgz0rVbLB3g==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-riscv64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.16.17.tgz",
++            "integrity": "sha512-ylNlVsxuFjZK8DQtNUwiMskh6nT0vI7kYl/4fZgV1llP5d6+HIeL/vmmm3jpuoo8+NuXjQVZxmKuhDApK0/cKw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-s390x": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.16.17.tgz",
++            "integrity": "sha512-gzy7nUTO4UA4oZ2wAMXPNBGTzZFP7mss3aKR2hH+/4UUkCOyqmjXiKpzGrY2TlEUhbbejzXVKKGazYcQTZWA/w==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/linux-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.16.17.tgz",
++            "integrity": "sha512-mdPjPxfnmoqhgpiEArqi4egmBAMYvaObgn4poorpUaqmvzzbvqbowRllQ+ZgzGVMGKaPkqUmPDOOFQRUFDmeUw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/netbsd-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.16.17.tgz",
++            "integrity": "sha512-/PzmzD/zyAeTUsduZa32bn0ORug+Jd1EGGAUJvqfeixoEISYpGnAezN6lnJoskauoai0Jrs+XSyvDhppCPoKOA==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/openbsd-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.16.17.tgz",
++            "integrity": "sha512-2yaWJhvxGEz2RiftSk0UObqJa/b+rIAjnODJgv2GbGGpRwAfpgzyrg1WLK8rqA24mfZa9GvpjLcBBg8JHkoodg==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/sunos-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.16.17.tgz",
++            "integrity": "sha512-xtVUiev38tN0R3g8VhRfN7Zl42YCJvyBhRKw1RJjwE1d2emWTVToPLNEQj/5Qxc6lVFATDiy6LjVHYhIPrLxzw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/win32-arm64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.16.17.tgz",
++            "integrity": "sha512-ga8+JqBDHY4b6fQAmOgtJJue36scANy4l/rL97W+0wYmijhxKetzZdKOJI7olaBaMhWt8Pac2McJdZLxXWUEQw==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/win32-ia32": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.16.17.tgz",
++            "integrity": "sha512-WnsKaf46uSSF/sZhwnqE4L/F89AYNMiD4YtEcYekBt9Q7nj0DiId2XH2Ng2PHM54qi5oPrQ8luuzGszqi/veig==",
++            "dev": true,
++            "optional": true
++        },
++        "@esbuild/win32-x64": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.16.17.tgz",
++            "integrity": "sha512-y+EHuSchhL7FjHgvQL/0fnnFmO4T1bhvWANX6gcnqTjtnKWbTvUMCpGnv2+t+31d7RzyEAYAd4u2fnIhHL6N/Q==",
++            "dev": true,
++            "optional": true
++        },
++        "@nodelib/fs.scandir": {
++            "version": "2.1.5",
++            "resolved": "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz",
++            "integrity": "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==",
++            "dev": true,
++            "requires": {
++                "@nodelib/fs.stat": "2.0.5",
++                "run-parallel": "^1.1.9"
++            }
++        },
++        "@nodelib/fs.stat": {
++            "version": "2.0.5",
++            "resolved": "https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz",
++            "integrity": "sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A==",
++            "dev": true
++        },
++        "@nodelib/fs.walk": {
++            "version": "1.2.8",
++            "resolved": "https://registry.npmjs.org/@nodelib/fs.walk/-/fs.walk-1.2.8.tgz",
++            "integrity": "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==",
++            "dev": true,
++            "requires": {
++                "@nodelib/fs.scandir": "2.1.5",
++                "fastq": "^1.6.0"
++            }
++        },
++        "@tailwindcss/forms": {
++            "version": "0.5.3",
++            "resolved": "https://registry.npmjs.org/@tailwindcss/forms/-/forms-0.5.3.tgz",
++            "integrity": "sha512-y5mb86JUoiUgBjY/o6FJSFZSEttfb3Q5gllE4xoKjAAD+vBrnIhE4dViwUuow3va8mpH4s9jyUbUbrRGoRdc2Q==",
++            "dev": true,
++            "requires": {
++                "mini-svg-data-uri": "^1.2.3"
++            }
++        },
++        "@vue/reactivity": {
++            "version": "3.1.5",
++            "resolved": "https://registry.npmjs.org/@vue/reactivity/-/reactivity-3.1.5.tgz",
++            "integrity": "sha512-1tdfLmNjWG6t/CsPldh+foumYFo3cpyCHgBYQ34ylaMsJ+SNHQ1kApMIa8jN+i593zQuaw3AdWH0nJTARzCFhg==",
++            "dev": true,
++            "requires": {
++                "@vue/shared": "3.1.5"
++            }
++        },
++        "@vue/shared": {
++            "version": "3.1.5",
++            "resolved": "https://registry.npmjs.org/@vue/shared/-/shared-3.1.5.tgz",
++            "integrity": "sha512-oJ4F3TnvpXaQwZJNF3ZK+kLPHKarDmJjJ6jyzVNDKH9md1dptjC7lWR//jrGuLdek/U6iltWxqAnYOu8gCiOvA==",
++            "dev": true
++        },
++        "acorn": {
++            "version": "7.4.1",
++            "resolved": "https://registry.npmjs.org/acorn/-/acorn-7.4.1.tgz",
++            "integrity": "sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==",
++            "dev": true
++        },
++        "acorn-node": {
++            "version": "1.8.2",
++            "resolved": "https://registry.npmjs.org/acorn-node/-/acorn-node-1.8.2.tgz",
++            "integrity": "sha512-8mt+fslDufLYntIoPAaIMUe/lrbrehIiwmR3t2k9LljIzoigEPF27eLk2hy8zSGzmR/ogr7zbRKINMo1u0yh5A==",
++            "dev": true,
++            "requires": {
++                "acorn": "^7.0.0",
++                "acorn-walk": "^7.0.0",
++                "xtend": "^4.0.2"
++            }
++        },
++        "acorn-walk": {
++            "version": "7.2.0",
++            "resolved": "https://registry.npmjs.org/acorn-walk/-/acorn-walk-7.2.0.tgz",
++            "integrity": "sha512-OPdCF6GsMIP+Az+aWfAAOEt2/+iVDKE7oy6lJ098aoe59oAmK76qV6Gw60SbZ8jHuG2wH058GF4pLFbYamYrVA==",
++            "dev": true
++        },
++        "alpinejs": {
++            "version": "3.11.1",
++            "resolved": "https://registry.npmjs.org/alpinejs/-/alpinejs-3.11.1.tgz",
++            "integrity": "sha512-0Y+4WKQcEZrvpfS98qeSOXCPXFPorULQ+1hc8lQrx+1HHzkUofD4HzjTfz+wimA5tSsGnpXz/SoF2P9saiXZCw==",
++            "dev": true,
++            "requires": {
++                "@vue/reactivity": "~3.1.1"
++            }
++        },
++        "anymatch": {
++            "version": "3.1.3",
++            "resolved": "https://registry.npmjs.org/anymatch/-/anymatch-3.1.3.tgz",
++            "integrity": "sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==",
++            "dev": true,
++            "requires": {
++                "normalize-path": "^3.0.0",
++                "picomatch": "^2.0.4"
++            }
++        },
++        "arg": {
++            "version": "5.0.2",
++            "resolved": "https://registry.npmjs.org/arg/-/arg-5.0.2.tgz",
++            "integrity": "sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==",
++            "dev": true
++        },
++        "asynckit": {
++            "version": "0.4.0",
++            "resolved": "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz",
++            "integrity": "sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==",
++            "dev": true
++        },
++        "autoprefixer": {
++            "version": "10.4.13",
++            "resolved": "https://registry.npmjs.org/autoprefixer/-/autoprefixer-10.4.13.tgz",
++            "integrity": "sha512-49vKpMqcZYsJjwotvt4+h/BCjJVnhGwcLpDt5xkcaOG3eLrG/HUYLagrihYsQ+qrIBgIzX1Rw7a6L8I/ZA1Atg==",
++            "dev": true,
++            "requires": {
++                "browserslist": "^4.21.4",
++                "caniuse-lite": "^1.0.30001426",
++                "fraction.js": "^4.2.0",
++                "normalize-range": "^0.1.2",
++                "picocolors": "^1.0.0",
++                "postcss-value-parser": "^4.2.0"
++            }
++        },
++        "axios": {
++            "version": "1.3.3",
++            "resolved": "https://registry.npmjs.org/axios/-/axios-1.3.3.tgz",
++            "integrity": "sha512-eYq77dYIFS77AQlhzEL937yUBSepBfPIe8FcgEDN35vMNZKMrs81pgnyrQpwfy4NF4b4XWX1Zgx7yX+25w8QJA==",
++            "dev": true,
++            "requires": {
++                "follow-redirects": "^1.15.0",
++                "form-data": "^4.0.0",
++                "proxy-from-env": "^1.1.0"
++            }
++        },
++        "binary-extensions": {
++            "version": "2.2.0",
++            "resolved": "https://registry.npmjs.org/binary-extensions/-/binary-extensions-2.2.0.tgz",
++            "integrity": "sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==",
++            "dev": true
++        },
++        "braces": {
++            "version": "3.0.2",
++            "resolved": "https://registry.npmjs.org/braces/-/braces-3.0.2.tgz",
++            "integrity": "sha512-b8um+L1RzM3WDSzvhm6gIz1yfTbBt6YTlcEKAvsmqCZZFw46z626lVj9j1yEPW33H5H+lBQpZMP1k8l+78Ha0A==",
++            "dev": true,
++            "requires": {
++                "fill-range": "^7.0.1"
++            }
++        },
++        "browserslist": {
++            "version": "4.21.5",
++            "resolved": "https://registry.npmjs.org/browserslist/-/browserslist-4.21.5.tgz",
++            "integrity": "sha512-tUkiguQGW7S3IhB7N+c2MV/HZPSCPAAiYBZXLsBhFB/PCy6ZKKsZrmBayHV9fdGV/ARIfJ14NkxKzRDjvp7L6w==",
++            "dev": true,
++            "requires": {
++                "caniuse-lite": "^1.0.30001449",
++                "electron-to-chromium": "^1.4.284",
++                "node-releases": "^2.0.8",
++                "update-browserslist-db": "^1.0.10"
++            }
++        },
++        "camelcase-css": {
++            "version": "2.0.1",
++            "resolved": "https://registry.npmjs.org/camelcase-css/-/camelcase-css-2.0.1.tgz",
++            "integrity": "sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA==",
++            "dev": true
++        },
++        "caniuse-lite": {
++            "version": "1.0.30001452",
++            "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001452.tgz",
++            "integrity": "sha512-Lkp0vFjMkBB3GTpLR8zk4NwW5EdRdnitwYJHDOOKIU85x4ckYCPQ+9WlVvSVClHxVReefkUMtWZH2l9KGlD51w==",
++            "dev": true
++        },
++        "chokidar": {
++            "version": "3.5.3",
++            "resolved": "https://registry.npmjs.org/chokidar/-/chokidar-3.5.3.tgz",
++            "integrity": "sha512-Dr3sfKRP6oTcjf2JmUmFJfeVMvXBdegxB0iVQ5eb2V10uFJUCAS8OByZdVAyVb8xXNz3GjjTgj9kLWsZTqE6kw==",
++            "dev": true,
++            "requires": {
++                "anymatch": "~3.1.2",
++                "braces": "~3.0.2",
++                "fsevents": "~2.3.2",
++                "glob-parent": "~5.1.2",
++                "is-binary-path": "~2.1.0",
++                "is-glob": "~4.0.1",
++                "normalize-path": "~3.0.0",
++                "readdirp": "~3.6.0"
++            },
++            "dependencies": {
++                "glob-parent": {
++                    "version": "5.1.2",
++                    "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz",
++                    "integrity": "sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==",
++                    "dev": true,
++                    "requires": {
++                        "is-glob": "^4.0.1"
++                    }
++                }
++            }
++        },
++        "color-name": {
++            "version": "1.1.4",
++            "resolved": "https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz",
++            "integrity": "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==",
++            "dev": true
++        },
++        "combined-stream": {
++            "version": "1.0.8",
++            "resolved": "https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz",
++            "integrity": "sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==",
++            "dev": true,
++            "requires": {
++                "delayed-stream": "~1.0.0"
++            }
++        },
++        "cssesc": {
++            "version": "3.0.0",
++            "resolved": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
++            "integrity": "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==",
++            "dev": true
++        },
++        "defined": {
++            "version": "1.0.1",
++            "resolved": "https://registry.npmjs.org/defined/-/defined-1.0.1.tgz",
++            "integrity": "sha512-hsBd2qSVCRE+5PmNdHt1uzyrFu5d3RwmFDKzyNZMFq/EwDNJF7Ee5+D5oEKF0hU6LhtoUF1macFvOe4AskQC1Q==",
++            "dev": true
++        },
++        "delayed-stream": {
++            "version": "1.0.0",
++            "resolved": "https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz",
++            "integrity": "sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==",
++            "dev": true
++        },
++        "detective": {
++            "version": "5.2.1",
++            "resolved": "https://registry.npmjs.org/detective/-/detective-5.2.1.tgz",
++            "integrity": "sha512-v9XE1zRnz1wRtgurGu0Bs8uHKFSTdteYZNbIPFVhUZ39L/S79ppMpdmVOZAnoz1jfEFodc48n6MX483Xo3t1yw==",
++            "dev": true,
++            "requires": {
++                "acorn-node": "^1.8.2",
++                "defined": "^1.0.0",
++                "minimist": "^1.2.6"
++            }
++        },
++        "didyoumean": {
++            "version": "1.2.2",
++            "resolved": "https://registry.npmjs.org/didyoumean/-/didyoumean-1.2.2.tgz",
++            "integrity": "sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==",
++            "dev": true
++        },
++        "dlv": {
++            "version": "1.1.3",
++            "resolved": "https://registry.npmjs.org/dlv/-/dlv-1.1.3.tgz",
++            "integrity": "sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==",
++            "dev": true
++        },
++        "electron-to-chromium": {
++            "version": "1.4.296",
++            "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.4.296.tgz",
++            "integrity": "sha512-i/6Q+Y9bluDa2a0NbMvdtG5TuS/1Fr3TKK8L+7UUL9QjRS5iFJzCC3r70xjyOnLiYG8qGV4/mMpe6HuAbdJW4w==",
++            "dev": true
++        },
++        "esbuild": {
++            "version": "0.16.17",
++            "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.16.17.tgz",
++            "integrity": "sha512-G8LEkV0XzDMNwXKgM0Jwu3nY3lSTwSGY6XbxM9cr9+s0T/qSV1q1JVPBGzm3dcjhCic9+emZDmMffkwgPeOeLg==",
++            "dev": true,
++            "requires": {
++                "@esbuild/android-arm": "0.16.17",
++                "@esbuild/android-arm64": "0.16.17",
++                "@esbuild/android-x64": "0.16.17",
++                "@esbuild/darwin-arm64": "0.16.17",
++                "@esbuild/darwin-x64": "0.16.17",
++                "@esbuild/freebsd-arm64": "0.16.17",
++                "@esbuild/freebsd-x64": "0.16.17",
++                "@esbuild/linux-arm": "0.16.17",
++                "@esbuild/linux-arm64": "0.16.17",
++                "@esbuild/linux-ia32": "0.16.17",
++                "@esbuild/linux-loong64": "0.16.17",
++                "@esbuild/linux-mips64el": "0.16.17",
++                "@esbuild/linux-ppc64": "0.16.17",
++                "@esbuild/linux-riscv64": "0.16.17",
++                "@esbuild/linux-s390x": "0.16.17",
++                "@esbuild/linux-x64": "0.16.17",
++                "@esbuild/netbsd-x64": "0.16.17",
++                "@esbuild/openbsd-x64": "0.16.17",
++                "@esbuild/sunos-x64": "0.16.17",
++                "@esbuild/win32-arm64": "0.16.17",
++                "@esbuild/win32-ia32": "0.16.17",
++                "@esbuild/win32-x64": "0.16.17"
++            }
++        },
++        "escalade": {
++            "version": "3.1.1",
++            "resolved": "https://registry.npmjs.org/escalade/-/escalade-3.1.1.tgz",
++            "integrity": "sha512-k0er2gUkLf8O0zKJiAhmkTnJlTvINGv7ygDNPbeIsX/TJjGJZHuh9B2UxbsaEkmlEo9MfhrSzmhIlhRlI2GXnw==",
++            "dev": true
++        },
++        "fast-glob": {
++            "version": "3.2.12",
++            "resolved": "https://registry.npmjs.org/fast-glob/-/fast-glob-3.2.12.tgz",
++            "integrity": "sha512-DVj4CQIYYow0BlaelwK1pHl5n5cRSJfM60UA0zK891sVInoPri2Ekj7+e1CT3/3qxXenpI+nBBmQAcJPJgaj4w==",
++            "dev": true,
++            "requires": {
++                "@nodelib/fs.stat": "^2.0.2",
++                "@nodelib/fs.walk": "^1.2.3",
++                "glob-parent": "^5.1.2",
++                "merge2": "^1.3.0",
++                "micromatch": "^4.0.4"
++            },
++            "dependencies": {
++                "glob-parent": {
++                    "version": "5.1.2",
++                    "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz",
++                    "integrity": "sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==",
++                    "dev": true,
++                    "requires": {
++                        "is-glob": "^4.0.1"
++                    }
++                }
++            }
++        },
++        "fastq": {
++            "version": "1.15.0",
++            "resolved": "https://registry.npmjs.org/fastq/-/fastq-1.15.0.tgz",
++            "integrity": "sha512-wBrocU2LCXXa+lWBt8RoIRD89Fi8OdABODa/kEnyeyjS5aZO5/GNvI5sEINADqP/h8M29UHTHUb53sUu5Ihqdw==",
++            "dev": true,
++            "requires": {
++                "reusify": "^1.0.4"
++            }
++        },
++        "fill-range": {
++            "version": "7.0.1",
++            "resolved": "https://registry.npmjs.org/fill-range/-/fill-range-7.0.1.tgz",
++            "integrity": "sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==",
++            "dev": true,
++            "requires": {
++                "to-regex-range": "^5.0.1"
++            }
++        },
++        "follow-redirects": {
++            "version": "1.15.2",
++            "resolved": "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.2.tgz",
++            "integrity": "sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==",
++            "dev": true
++        },
++        "form-data": {
++            "version": "4.0.0",
++            "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.0.tgz",
++            "integrity": "sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==",
++            "dev": true,
++            "requires": {
++                "asynckit": "^0.4.0",
++                "combined-stream": "^1.0.8",
++                "mime-types": "^2.1.12"
++            }
++        },
++        "fraction.js": {
++            "version": "4.2.0",
++            "resolved": "https://registry.npmjs.org/fraction.js/-/fraction.js-4.2.0.tgz",
++            "integrity": "sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==",
++            "dev": true
++        },
++        "fsevents": {
++            "version": "2.3.2",
++            "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz",
++            "integrity": "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==",
++            "dev": true,
++            "optional": true
++        },
++        "function-bind": {
++            "version": "1.1.1",
++            "resolved": "https://registry.npmjs.org/function-bind/-/function-bind-1.1.1.tgz",
++            "integrity": "sha512-yIovAzMX49sF8Yl58fSCWJ5svSLuaibPxXQJFLmBObTuCr0Mf1KiPopGM9NiFjiYBCbfaa2Fh6breQ6ANVTI0A==",
++            "dev": true
++        },
++        "glob-parent": {
++            "version": "6.0.2",
++            "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-6.0.2.tgz",
++            "integrity": "sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==",
++            "dev": true,
++            "requires": {
++                "is-glob": "^4.0.3"
++            }
++        },
++        "has": {
++            "version": "1.0.3",
++            "resolved": "https://registry.npmjs.org/has/-/has-1.0.3.tgz",
++            "integrity": "sha512-f2dvO0VU6Oej7RkWJGrehjbzMAjFp5/VKPp5tTpWIV4JHHZK1/BxbFRtf/siA2SWTe09caDmVtYYzWEIbBS4zw==",
++            "dev": true,
++            "requires": {
++                "function-bind": "^1.1.1"
++            }
++        },
++        "is-binary-path": {
++            "version": "2.1.0",
++            "resolved": "https://registry.npmjs.org/is-binary-path/-/is-binary-path-2.1.0.tgz",
++            "integrity": "sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==",
++            "dev": true,
++            "requires": {
++                "binary-extensions": "^2.0.0"
++            }
++        },
++        "is-core-module": {
++            "version": "2.11.0",
++            "resolved": "https://registry.npmjs.org/is-core-module/-/is-core-module-2.11.0.tgz",
++            "integrity": "sha512-RRjxlvLDkD1YJwDbroBHMb+cukurkDWNyHx7D3oNB5x9rb5ogcksMC5wHCadcXoo67gVr/+3GFySh3134zi6rw==",
++            "dev": true,
++            "requires": {
++                "has": "^1.0.3"
++            }
++        },
++        "is-extglob": {
++            "version": "2.1.1",
++            "resolved": "https://registry.npmjs.org/is-extglob/-/is-extglob-2.1.1.tgz",
++            "integrity": "sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==",
++            "dev": true
++        },
++        "is-glob": {
++            "version": "4.0.3",
++            "resolved": "https://registry.npmjs.org/is-glob/-/is-glob-4.0.3.tgz",
++            "integrity": "sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==",
++            "dev": true,
++            "requires": {
++                "is-extglob": "^2.1.1"
++            }
++        },
++        "is-number": {
++            "version": "7.0.0",
++            "resolved": "https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz",
++            "integrity": "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==",
++            "dev": true
++        },
++        "laravel-vite-plugin": {
++            "version": "0.7.4",
++            "resolved": "https://registry.npmjs.org/laravel-vite-plugin/-/laravel-vite-plugin-0.7.4.tgz",
++            "integrity": "sha512-NlIuXbeuI+4NZzRpWNpGHRVTwuFWessvD7QoD+o2MlyAi7qyUS4J8r4/yTlu1dl9lxcR7iKoYUmHQqZDcrw2KA==",
++            "dev": true,
++            "requires": {
++                "picocolors": "^1.0.0",
++                "vite-plugin-full-reload": "^1.0.5"
++            }
++        },
++        "lilconfig": {
++            "version": "2.0.6",
++            "resolved": "https://registry.npmjs.org/lilconfig/-/lilconfig-2.0.6.tgz",
++            "integrity": "sha512-9JROoBW7pobfsx+Sq2JsASvCo6Pfo6WWoUW79HuB1BCoBXD4PLWJPqDF6fNj67pqBYTbAHkE57M1kS/+L1neOg==",
++            "dev": true
++        },
++        "lodash": {
++            "version": "4.17.21",
++            "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
++            "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==",
++            "dev": true
++        },
++        "merge2": {
++            "version": "1.4.1",
++            "resolved": "https://registry.npmjs.org/merge2/-/merge2-1.4.1.tgz",
++            "integrity": "sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==",
++            "dev": true
++        },
++        "micromatch": {
++            "version": "4.0.5",
++            "resolved": "https://registry.npmjs.org/micromatch/-/micromatch-4.0.5.tgz",
++            "integrity": "sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==",
++            "dev": true,
++            "requires": {
++                "braces": "^3.0.2",
++                "picomatch": "^2.3.1"
++            }
++        },
++        "mime-db": {
++            "version": "1.52.0",
++            "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz",
++            "integrity": "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==",
++            "dev": true
++        },
++        "mime-types": {
++            "version": "2.1.35",
++            "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz",
++            "integrity": "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==",
++            "dev": true,
++            "requires": {
++                "mime-db": "1.52.0"
++            }
++        },
++        "mini-svg-data-uri": {
++            "version": "1.4.4",
++            "resolved": "https://registry.npmjs.org/mini-svg-data-uri/-/mini-svg-data-uri-1.4.4.tgz",
++            "integrity": "sha512-r9deDe9p5FJUPZAk3A59wGH7Ii9YrjjWw0jmw/liSbHl2CHiyXj6FcDXDu2K3TjVAXqiJdaw3xxwlZZr9E6nHg==",
++            "dev": true
++        },
++        "minimist": {
++            "version": "1.2.8",
++            "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz",
++            "integrity": "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==",
++            "dev": true
++        },
++        "nanoid": {
++            "version": "3.3.4",
++            "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.4.tgz",
++            "integrity": "sha512-MqBkQh/OHTS2egovRtLk45wEyNXwF+cokD+1YPf9u5VfJiRdAiRwB2froX5Co9Rh20xs4siNPm8naNotSD6RBw==",
++            "dev": true
++        },
++        "node-releases": {
++            "version": "2.0.10",
++            "resolved": "https://registry.npmjs.org/node-releases/-/node-releases-2.0.10.tgz",
++            "integrity": "sha512-5GFldHPXVG/YZmFzJvKK2zDSzPKhEp0+ZR5SVaoSag9fsL5YgHbUHDfnG5494ISANDcK4KwPXAx2xqVEydmd7w==",
++            "dev": true
++        },
++        "normalize-path": {
++            "version": "3.0.0",
++            "resolved": "https://registry.npmjs.org/normalize-path/-/normalize-path-3.0.0.tgz",
++            "integrity": "sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==",
++            "dev": true
++        },
++        "normalize-range": {
++            "version": "0.1.2",
++            "resolved": "https://registry.npmjs.org/normalize-range/-/normalize-range-0.1.2.tgz",
++            "integrity": "sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==",
++            "dev": true
++        },
++        "object-hash": {
++            "version": "3.0.0",
++            "resolved": "https://registry.npmjs.org/object-hash/-/object-hash-3.0.0.tgz",
++            "integrity": "sha512-RSn9F68PjH9HqtltsSnqYC1XXoWe9Bju5+213R98cNGttag9q9yAOTzdbsqvIa7aNm5WffBZFpWYr2aWrklWAw==",
++            "dev": true
++        },
++        "path-parse": {
++            "version": "1.0.7",
++            "resolved": "https://registry.npmjs.org/path-parse/-/path-parse-1.0.7.tgz",
++            "integrity": "sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==",
++            "dev": true
++        },
++        "picocolors": {
++            "version": "1.0.0",
++            "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.0.0.tgz",
++            "integrity": "sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==",
++            "dev": true
++        },
++        "picomatch": {
++            "version": "2.3.1",
++            "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-2.3.1.tgz",
++            "integrity": "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==",
++            "dev": true
++        },
++        "pify": {
++            "version": "2.3.0",
++            "resolved": "https://registry.npmjs.org/pify/-/pify-2.3.0.tgz",
++            "integrity": "sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==",
++            "dev": true
++        },
++        "postcss": {
++            "version": "8.4.21",
++            "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.4.21.tgz",
++            "integrity": "sha512-tP7u/Sn/dVxK2NnruI4H9BG+x+Wxz6oeZ1cJ8P6G/PZY0IKk4k/63TDsQf2kQq3+qoJeLm2kIBUNlZe3zgb4Zg==",
++            "dev": true,
++            "requires": {
++                "nanoid": "^3.3.4",
++                "picocolors": "^1.0.0",
++                "source-map-js": "^1.0.2"
++            }
++        },
++        "postcss-import": {
++            "version": "14.1.0",
++            "resolved": "https://registry.npmjs.org/postcss-import/-/postcss-import-14.1.0.tgz",
++            "integrity": "sha512-flwI+Vgm4SElObFVPpTIT7SU7R3qk2L7PyduMcokiaVKuWv9d/U+Gm/QAd8NDLuykTWTkcrjOeD2Pp1rMeBTGw==",
++            "dev": true,
++            "requires": {
++                "postcss-value-parser": "^4.0.0",
++                "read-cache": "^1.0.0",
++                "resolve": "^1.1.7"
++            }
++        },
++        "postcss-js": {
++            "version": "4.0.1",
++            "resolved": "https://registry.npmjs.org/postcss-js/-/postcss-js-4.0.1.tgz",
++            "integrity": "sha512-dDLF8pEO191hJMtlHFPRa8xsizHaM82MLfNkUHdUtVEV3tgTp5oj+8qbEqYM57SLfc74KSbw//4SeJma2LRVIw==",
++            "dev": true,
++            "requires": {
++                "camelcase-css": "^2.0.1"
++            }
++        },
++        "postcss-load-config": {
++            "version": "3.1.4",
++            "resolved": "https://registry.npmjs.org/postcss-load-config/-/postcss-load-config-3.1.4.tgz",
++            "integrity": "sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==",
++            "dev": true,
++            "requires": {
++                "lilconfig": "^2.0.5",
++                "yaml": "^1.10.2"
++            }
++        },
++        "postcss-nested": {
++            "version": "6.0.0",
++            "resolved": "https://registry.npmjs.org/postcss-nested/-/postcss-nested-6.0.0.tgz",
++            "integrity": "sha512-0DkamqrPcmkBDsLn+vQDIrtkSbNkv5AD/M322ySo9kqFkCIYklym2xEmWkwo+Y3/qZo34tzEPNUw4y7yMCdv5w==",
++            "dev": true,
++            "requires": {
++                "postcss-selector-parser": "^6.0.10"
++            }
++        },
++        "postcss-selector-parser": {
++            "version": "6.0.11",
++            "resolved": "https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-6.0.11.tgz",
++            "integrity": "sha512-zbARubNdogI9j7WY4nQJBiNqQf3sLS3wCP4WfOidu+p28LofJqDH1tcXypGrcmMHhDk2t9wGhCsYe/+szLTy1g==",
++            "dev": true,
++            "requires": {
++                "cssesc": "^3.0.0",
++                "util-deprecate": "^1.0.2"
++            }
++        },
++        "postcss-value-parser": {
++            "version": "4.2.0",
++            "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz",
++            "integrity": "sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==",
++            "dev": true
++        },
++        "proxy-from-env": {
++            "version": "1.1.0",
++            "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
++            "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==",
++            "dev": true
++        },
++        "queue-microtask": {
++            "version": "1.2.3",
++            "resolved": "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz",
++            "integrity": "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==",
++            "dev": true
++        },
++        "quick-lru": {
++            "version": "5.1.1",
++            "resolved": "https://registry.npmjs.org/quick-lru/-/quick-lru-5.1.1.tgz",
++            "integrity": "sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==",
++            "dev": true
++        },
++        "read-cache": {
++            "version": "1.0.0",
++            "resolved": "https://registry.npmjs.org/read-cache/-/read-cache-1.0.0.tgz",
++            "integrity": "sha512-Owdv/Ft7IjOgm/i0xvNDZ1LrRANRfew4b2prF3OWMQLxLfu3bS8FVhCsrSCMK4lR56Y9ya+AThoTpDCTxCmpRA==",
++            "dev": true,
++            "requires": {
++                "pify": "^2.3.0"
++            }
++        },
++        "readdirp": {
++            "version": "3.6.0",
++            "resolved": "https://registry.npmjs.org/readdirp/-/readdirp-3.6.0.tgz",
++            "integrity": "sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==",
++            "dev": true,
++            "requires": {
++                "picomatch": "^2.2.1"
++            }
++        },
++        "resolve": {
++            "version": "1.22.1",
++            "resolved": "https://registry.npmjs.org/resolve/-/resolve-1.22.1.tgz",
++            "integrity": "sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw==",
++            "dev": true,
++            "requires": {
++                "is-core-module": "^2.9.0",
++                "path-parse": "^1.0.7",
++                "supports-preserve-symlinks-flag": "^1.0.0"
++            }
++        },
++        "reusify": {
++            "version": "1.0.4",
++            "resolved": "https://registry.npmjs.org/reusify/-/reusify-1.0.4.tgz",
++            "integrity": "sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==",
++            "dev": true
++        },
++        "rollup": {
++            "version": "3.15.0",
++            "resolved": "https://registry.npmjs.org/rollup/-/rollup-3.15.0.tgz",
++            "integrity": "sha512-F9hrCAhnp5/zx/7HYmftvsNBkMfLfk/dXUh73hPSM2E3CRgap65orDNJbLetoiUFwSAk6iHPLvBrZ5iHYvzqsg==",
++            "dev": true,
++            "requires": {
++                "fsevents": "~2.3.2"
++            }
++        },
++        "run-parallel": {
++            "version": "1.2.0",
++            "resolved": "https://registry.npmjs.org/run-parallel/-/run-parallel-1.2.0.tgz",
++            "integrity": "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==",
++            "dev": true,
++            "requires": {
++                "queue-microtask": "^1.2.2"
++            }
++        },
++        "source-map-js": {
++            "version": "1.0.2",
++            "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.0.2.tgz",
++            "integrity": "sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==",
++            "dev": true
++        },
++        "supports-preserve-symlinks-flag": {
++            "version": "1.0.0",
++            "resolved": "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz",
++            "integrity": "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==",
++            "dev": true
++        },
++        "tailwindcss": {
++            "version": "3.2.6",
++            "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-3.2.6.tgz",
++            "integrity": "sha512-BfgQWZrtqowOQMC2bwaSNe7xcIjdDEgixWGYOd6AL0CbKHJlvhfdbINeAW76l1sO+1ov/MJ93ODJ9yluRituIw==",
++            "dev": true,
++            "requires": {
++                "arg": "^5.0.2",
++                "chokidar": "^3.5.3",
++                "color-name": "^1.1.4",
++                "detective": "^5.2.1",
++                "didyoumean": "^1.2.2",
++                "dlv": "^1.1.3",
++                "fast-glob": "^3.2.12",
++                "glob-parent": "^6.0.2",
++                "is-glob": "^4.0.3",
++                "lilconfig": "^2.0.6",
++                "micromatch": "^4.0.5",
++                "normalize-path": "^3.0.0",
++                "object-hash": "^3.0.0",
++                "picocolors": "^1.0.0",
++                "postcss": "^8.0.9",
++                "postcss-import": "^14.1.0",
++                "postcss-js": "^4.0.0",
++                "postcss-load-config": "^3.1.4",
++                "postcss-nested": "6.0.0",
++                "postcss-selector-parser": "^6.0.11",
++                "postcss-value-parser": "^4.2.0",
++                "quick-lru": "^5.1.1",
++                "resolve": "^1.22.1"
++            }
++        },
++        "to-regex-range": {
++            "version": "5.0.1",
++            "resolved": "https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz",
++            "integrity": "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==",
++            "dev": true,
++            "requires": {
++                "is-number": "^7.0.0"
++            }
++        },
++        "update-browserslist-db": {
++            "version": "1.0.10",
++            "resolved": "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.0.10.tgz",
++            "integrity": "sha512-OztqDenkfFkbSG+tRxBeAnCVPckDBcvibKd35yDONx6OU8N7sqgwc7rCbkJ/WcYtVRZ4ba68d6byhC21GFh7sQ==",
++            "dev": true,
++            "requires": {
++                "escalade": "^3.1.1",
++                "picocolors": "^1.0.0"
++            }
++        },
++        "util-deprecate": {
++            "version": "1.0.2",
++            "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
++            "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
++            "dev": true
++        },
++        "vite": {
++            "version": "4.1.1",
++            "resolved": "https://registry.npmjs.org/vite/-/vite-4.1.1.tgz",
++            "integrity": "sha512-LM9WWea8vsxhr782r9ntg+bhSFS06FJgCvvB0+8hf8UWtvaiDagKYWXndjfX6kGl74keHJUcpzrQliDXZlF5yg==",
++            "dev": true,
++            "requires": {
++                "esbuild": "^0.16.14",
++                "fsevents": "~2.3.2",
++                "postcss": "^8.4.21",
++                "resolve": "^1.22.1",
++                "rollup": "^3.10.0"
++            }
++        },
++        "vite-plugin-full-reload": {
++            "version": "1.0.5",
++            "resolved": "https://registry.npmjs.org/vite-plugin-full-reload/-/vite-plugin-full-reload-1.0.5.tgz",
++            "integrity": "sha512-kVZFDFWr0DxiHn6MuDVTQf7gnWIdETGlZh0hvTiMXzRN80vgF4PKbONSq8U1d0WtHsKaFODTQgJeakLacoPZEQ==",
++            "dev": true,
++            "requires": {
++                "picocolors": "^1.0.0",
++                "picomatch": "^2.3.1"
++            }
++        },
++        "xtend": {
++            "version": "4.0.2",
++            "resolved": "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz",
++            "integrity": "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==",
++            "dev": true
++        },
++        "yaml": {
++            "version": "1.10.2",
++            "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
++            "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
++            "dev": true
++        }
++    }
++}
+Index: laravel_failai/package.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/package.json b/laravel_failai/package.json
+--- a/laravel_failai/package.json	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/package.json	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -1,14 +1,14 @@
+ {
+     "private": true,
+-    "scripts": {
+-        "dev": "vite",
+-        "build": "vite build"
+-    },
+     "devDependencies": {
++        "@tailwindcss/forms": "^0.5.2",
++        "alpinejs": "^3.4.2",
++        "autoprefixer": "^10.4.2",
+         "axios": "^1.1.2",
+         "laravel-vite-plugin": "^0.7.2",
+         "lodash": "^4.17.19",
+-        "postcss": "^8.1.14",
++        "postcss": "^8.4.6",
++        "tailwindcss": "^3.1.0",
+         "vite": "^4.0.0"
+     }
+ }
+Index: laravel_failai/postcss.config.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/postcss.config.js b/laravel_failai/postcss.config.js
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/postcss.config.js	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,6 @@
++module.exports = {
++    plugins: {
++        tailwindcss: {},
++        autoprefixer: {},
++    },
++};
+Index: laravel_failai/resources/css/app.css
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/css/app.css b/laravel_failai/resources/css/app.css
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/css/app.css	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++@tailwind base;
++@tailwind components;
++@tailwind utilities;
+Index: laravel_failai/resources/js/app.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/js/app.js b/laravel_failai/resources/js/app.js
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/js/app.js	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,7 @@
++import './bootstrap';
++
++import Alpine from 'alpinejs';
++
++window.Alpine = Alpine;
++
++Alpine.start();
+Index: laravel_failai/resources/views/admin/dashboard.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/admin/dashboard.blade.php b/laravel_failai/resources/views/admin/dashboard.blade.php
+--- a/laravel_failai/resources/views/admin/dashboard.blade.php	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/resources/views/admin/dashboard.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -3,55 +3,66 @@
+ @section('title', 'Dashboard')
+ 
+ @section('content')
+-    Cia bus admin dashboard:
+-    <h2>Orders</h2>
+-    @foreach($latestOrders as $order)
+-        <div class="card">
+-            <div class="card-content">
+-                <span class="card-title">Order #{{ $order->id }}</span>
+-                <p>Created at: {{ $order->created_at }}</p>
+-                <p>Updated at: {{ $order->updated_at }}</p>
+-                <p>Order status: {{ $order->status }}</p>
+-                {{--            <p>Order total: {{ $order->total }}</p>--}}
+-                {{--            <p>Order items: {{ $order->items }}</p>--}}
+-            </div>
+-            <div class="card-action">
+-                <a href="{{ route('orders.show', $order) }}">View</a>
+-            </div>
+-        </div>
+-    @endforeach
++
++    @include('layouts.admin.navigation')
++    <div class="py-12">
++        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
++            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
++                <div class="p-6 text-gray-900 dark:text-gray-100">
++                    {{ __("You're logged in!") }}
++                    Cia bus admin dashboard:
++                    <h2>Orders</h2>
++                    @foreach($latestOrders as $order)
++                        <div class="card">
++                            <div class="card-content">
++                                <span class="card-title">Order #{{ $order->id }}</span>
++                                <p>Created at: {{ $order->created_at }}</p>
++                                <p>Updated at: {{ $order->updated_at }}</p>
++                                <p>Order status: {{ $order->status }}</p>
++                                {{--            <p>Order total: {{ $order->total }}</p>--}}
++                                {{--            <p>Order items: {{ $order->items }}</p>--}}
++                            </div>
++                            <div class="card-action">
++                                <a href="{{ route('orders.show', $order) }}">View</a>
++                            </div>
++                        </div>
++                    @endforeach
+ 
+-    <h2>Products</h2>
+-    @foreach($latestProducts as $product)
+-        <div class="card">
+-            <div class="card-content">
+-                <span class="card-title">Product #{{ $product->id }}</span>
+-                <p>Created at: {{ $product->created_at }}</p>
+-                <p>Updated at: {{ $product->updated_at }}</p>
+-                <p>Product name: {{ $product->name }}</p>
+-                <p>Product price: {{ $product->price }}</p>
+-                <p>Product description: {{ $product->description }}</p>
+-                <p>Product category: {{ $product->category }}</p>
+-            </div>
+-            <div class="card-action">
+-                <a href="{{ route('products.show', $product) }}">View</a>
+-            </div>
+-        </div>
+-    @endforeach
++                    <h2>Products</h2>
++                    @foreach($latestProducts as $product)
++                        <div class="card">
++                            <div class="card-content">
++                                <span class="card-title">Product #{{ $product->id }}</span>
++                                <p>Created at: {{ $product->created_at }}</p>
++                                <p>Updated at: {{ $product->updated_at }}</p>
++                                <p>Product name: {{ $product->name }}</p>
++                                <p>Product price: {{ $product->price }}</p>
++                                <p>Product description: {{ $product->description }}</p>
++                                <p>Product category: {{ $product->category }}</p>
++                            </div>
++                            <div class="card-action">
++                                <a href="{{ route('products.show', $product) }}">View</a>
++                            </div>
++                        </div>
++                    @endforeach
+ 
+-    <h2>Users</h2>
+-    @foreach($latestUsers as $user)
+-        <div class="card">
+-            <div class="card-content">
+-                <span class="card-title">User #{{ $user->id }}</span>
+-                <p>Created at: {{ $user->created_at }}</p>
+-                <p>Updated at: {{ $user->updated_at }}</p>
+-                <p>User name: {{ $user->name }}</p>
+-                <p>User email: {{ $user->email }}</p>
+-            </div>
+-            <div class="card-action">
+-                <a href="{{ route('users.show', $user) }}">View</a>
+-            </div>
+-        </div>
+-    @endforeach
++                    <h2>Users</h2>
++                    @foreach($latestUsers as $user)
++                        <div class="card">
++                            <div class="card-content">
++                                <span class="card-title">User #{{ $user->id }}</span>
++                                <p>Created at: {{ $user->created_at }}</p>
++                                <p>Updated at: {{ $user->updated_at }}</p>
++                                <p>User name: {{ $user->name }}</p>
++                                <p>User email: {{ $user->email }}</p>
++                            </div>
++                            <div class="card-action">
++                                <a href="{{ route('users.show', $user) }}">View</a>
++                            </div>
++                        </div>
++                    @endforeach
++                </div>
++            </div>
++        </div>
++    </div>
+ @endsection
+Index: laravel_failai/resources/views/auth/confirm-password.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/confirm-password.blade.php b/laravel_failai/resources/views/auth/confirm-password.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/confirm-password.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,31 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Confirm password')
++
++@section('content')
++    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
++        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
++    </div>
++
++    <form method="POST" action="{{ route('password.confirm') }}">
++        @csrf
++
++        <!-- Password -->
++        <div>
++            <x-input-label for="password" :value="__('Password')" />
++
++            <x-text-input id="password" class="block mt-1 w-full"
++                            type="password"
++                            name="password"
++                            required autocomplete="current-password" />
++
++            <x-input-error :messages="$errors->get('password')" class="mt-2" />
++        </div>
++
++        <div class="flex justify-end mt-4">
++            <x-primary-button>
++                {{ __('Confirm') }}
++            </x-primary-button>
++        </div>
++    </form>
++@endsection
+Index: laravel_failai/resources/views/auth/forgot-password.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/forgot-password.blade.php b/laravel_failai/resources/views/auth/forgot-password.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/forgot-password.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,29 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Forgot password')
++
++@section('content')
++    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
++        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
++    </div>
++
++    <!-- Session Status -->
++    <x-auth-session-status class="mb-4" :status="session('status')" />
++
++    <form method="POST" action="{{ route('password.email') }}">
++        @csrf
++
++        <!-- Email Address -->
++        <div>
++            <x-input-label for="email" :value="__('Email')" />
++            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus />
++            <x-input-error :messages="$errors->get('email')" class="mt-2" />
++        </div>
++
++        <div class="flex items-center justify-end mt-4">
++            <x-primary-button>
++                {{ __('Email Password Reset Link') }}
++            </x-primary-button>
++        </div>
++    </form>
++@endsection
+Index: laravel_failai/resources/views/auth/login.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/login.blade.php b/laravel_failai/resources/views/auth/login.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/login.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,51 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Login')
++
++@section('content')
++    <!-- Session Status -->
++    <x-auth-session-status class="mb-4" :status="session('status')" />
++
++    <form method="POST" action="{{ route('login') }}">
++        @csrf
++
++        <!-- Email Address -->
++        <div>
++            <x-input-label for="email" :value="__('Email')" />
++            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
++            <x-input-error :messages="$errors->get('email')" class="mt-2" />
++        </div>
++
++        <!-- Password -->
++        <div class="mt-4">
++            <x-input-label for="password" :value="__('Password')" />
++
++            <x-text-input id="password" class="block mt-1 w-full"
++                            type="password"
++                            name="password"
++                            required autocomplete="current-password" />
++
++            <x-input-error :messages="$errors->get('password')" class="mt-2" />
++        </div>
++
++        <!-- Remember Me -->
++        <div class="block mt-4">
++            <label for="remember_me" class="inline-flex items-center">
++                <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
++                <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
++            </label>
++        </div>
++
++        <div class="flex items-center justify-end mt-4">
++            @if (Route::has('password.request'))
++                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
++                    {{ __('Forgot your password?') }}
++                </a>
++            @endif
++
++            <x-primary-button class="ml-3">
++                {{ __('Log in') }}
++            </x-primary-button>
++        </div>
++    </form>
++@endsection
+Index: laravel_failai/resources/views/auth/register.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/register.blade.php b/laravel_failai/resources/views/auth/register.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/register.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,56 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Register')
++
++@section('content')
++    <form method="POST" action="{{ route('register') }}">
++        @csrf
++
++        <!-- Name -->
++        <div>
++            <x-input-label for="name" :value="__('Name')" />
++            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
++            <x-input-error :messages="$errors->get('name')" class="mt-2" />
++        </div>
++
++        <!-- Email Address -->
++        <div class="mt-4">
++            <x-input-label for="email" :value="__('Email')" />
++            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
++            <x-input-error :messages="$errors->get('email')" class="mt-2" />
++        </div>
++
++        <!-- Password -->
++        <div class="mt-4">
++            <x-input-label for="password" :value="__('Password')" />
++
++            <x-text-input id="password" class="block mt-1 w-full"
++                            type="password"
++                            name="password"
++                            required autocomplete="new-password" />
++
++            <x-input-error :messages="$errors->get('password')" class="mt-2" />
++        </div>
++
++        <!-- Confirm Password -->
++        <div class="mt-4">
++            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
++
++            <x-text-input id="password_confirmation" class="block mt-1 w-full"
++                            type="password"
++                            name="password_confirmation" required autocomplete="new-password" />
++
++            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
++        </div>
++
++        <div class="flex items-center justify-end mt-4">
++            <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('login') }}">
++                {{ __('Already registered?') }}
++            </a>
++
++            <x-primary-button class="ml-4">
++                {{ __('Register') }}
++            </x-primary-button>
++        </div>
++    </form>
++@endsection
+Index: laravel_failai/resources/views/auth/reset-password.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/reset-password.blade.php b/laravel_failai/resources/views/auth/reset-password.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/reset-password.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,43 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Reset Email')
++
++@section('content')
++    <form method="POST" action="{{ route('password.store') }}">
++        @csrf
++
++        <!-- Password Reset Token -->
++        <input type="hidden" name="token" value="{{ $request->route('token') }}">
++
++        <!-- Email Address -->
++        <div>
++            <x-input-label for="email" :value="__('Email')" />
++            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
++            <x-input-error :messages="$errors->get('email')" class="mt-2" />
++        </div>
++
++        <!-- Password -->
++        <div class="mt-4">
++            <x-input-label for="password" :value="__('Password')" />
++            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
++            <x-input-error :messages="$errors->get('password')" class="mt-2" />
++        </div>
++
++        <!-- Confirm Password -->
++        <div class="mt-4">
++            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
++
++            <x-text-input id="password_confirmation" class="block mt-1 w-full"
++                                type="password"
++                                name="password_confirmation" required autocomplete="new-password" />
++
++            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
++        </div>
++
++        <div class="flex items-center justify-end mt-4">
++            <x-primary-button>
++                {{ __('Reset Password') }}
++            </x-primary-button>
++        </div>
++    </form>
++@endsection
+Index: laravel_failai/resources/views/auth/verify-email.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/auth/verify-email.blade.php b/laravel_failai/resources/views/auth/verify-email.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/auth/verify-email.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,35 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Verify Email')
++
++@section('content')
++    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
++        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
++    </div>
++
++    @if (session('status') == 'verification-link-sent')
++        <div class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
++            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
++        </div>
++    @endif
++
++    <div class="mt-4 flex items-center justify-between">
++        <form method="POST" action="{{ route('verification.send') }}">
++            @csrf
++
++            <div>
++                <x-primary-button>
++                    {{ __('Resend Verification Email') }}
++                </x-primary-button>
++            </div>
++        </form>
++
++        <form method="POST" action="{{ route('logout') }}">
++            @csrf
++
++            <button type="submit" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
++                {{ __('Log Out') }}
++            </button>
++        </form>
++    </div>
++@endsection
+Index: laravel_failai/resources/views/components/application-logo.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/application-logo.blade.php b/laravel_failai/resources/views/components/application-logo.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/application-logo.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++<svg viewBox="0 0 316 316" xmlns="http://www.w3.org/2000/svg" {{ $attributes }}>
++    <path d="M305.8 81.125C305.77 80.995 305.69 80.885 305.65 80.755C305.56 80.525 305.49 80.285 305.37 80.075C305.29 79.935 305.17 79.815 305.07 79.685C304.94 79.515 304.83 79.325 304.68 79.175C304.55 79.045 304.39 78.955 304.25 78.845C304.09 78.715 303.95 78.575 303.77 78.475L251.32 48.275C249.97 47.495 248.31 47.495 246.96 48.275L194.51 78.475C194.33 78.575 194.19 78.725 194.03 78.845C193.89 78.955 193.73 79.045 193.6 79.175C193.45 79.325 193.34 79.515 193.21 79.685C193.11 79.815 192.99 79.935 192.91 80.075C192.79 80.285 192.71 80.525 192.63 80.755C192.58 80.875 192.51 80.995 192.48 81.125C192.38 81.495 192.33 81.875 192.33 82.265V139.625L148.62 164.795V52.575C148.62 52.185 148.57 51.805 148.47 51.435C148.44 51.305 148.36 51.195 148.32 51.065C148.23 50.835 148.16 50.595 148.04 50.385C147.96 50.245 147.84 50.125 147.74 49.995C147.61 49.825 147.5 49.635 147.35 49.485C147.22 49.355 147.06 49.265 146.92 49.155C146.76 49.025 146.62 48.885 146.44 48.785L93.99 18.585C92.64 17.805 90.98 17.805 89.63 18.585L37.18 48.785C37 48.885 36.86 49.035 36.7 49.155C36.56 49.265 36.4 49.355 36.27 49.485C36.12 49.635 36.01 49.825 35.88 49.995C35.78 50.125 35.66 50.245 35.58 50.385C35.46 50.595 35.38 50.835 35.3 51.065C35.25 51.185 35.18 51.305 35.15 51.435C35.05 51.805 35 52.185 35 52.575V232.235C35 233.795 35.84 235.245 37.19 236.025L142.1 296.425C142.33 296.555 142.58 296.635 142.82 296.725C142.93 296.765 143.04 296.835 143.16 296.865C143.53 296.965 143.9 297.015 144.28 297.015C144.66 297.015 145.03 296.965 145.4 296.865C145.5 296.835 145.59 296.775 145.69 296.745C145.95 296.655 146.21 296.565 146.45 296.435L251.36 236.035C252.72 235.255 253.55 233.815 253.55 232.245V174.885L303.81 145.945C305.17 145.165 306 143.725 306 142.155V82.265C305.95 81.875 305.89 81.495 305.8 81.125ZM144.2 227.205L100.57 202.515L146.39 176.135L196.66 147.195L240.33 172.335L208.29 190.625L144.2 227.205ZM244.75 114.995V164.795L226.39 154.225L201.03 139.625V89.825L219.39 100.395L244.75 114.995ZM249.12 57.105L292.81 82.265L249.12 107.425L205.43 82.265L249.12 57.105ZM114.49 184.425L96.13 194.995V85.305L121.49 70.705L139.85 60.135V169.815L114.49 184.425ZM91.76 27.425L135.45 52.585L91.76 77.745L48.07 52.585L91.76 27.425ZM43.67 60.135L62.03 70.705L87.39 85.305V202.545V202.555V202.565C87.39 202.735 87.44 202.895 87.46 203.055C87.49 203.265 87.49 203.485 87.55 203.695V203.705C87.6 203.875 87.69 204.035 87.76 204.195C87.84 204.375 87.89 204.575 87.99 204.745C87.99 204.745 87.99 204.755 88 204.755C88.09 204.905 88.22 205.035 88.33 205.175C88.45 205.335 88.55 205.495 88.69 205.635L88.7 205.645C88.82 205.765 88.98 205.855 89.12 205.965C89.28 206.085 89.42 206.225 89.59 206.325C89.6 206.325 89.6 206.325 89.61 206.335C89.62 206.335 89.62 206.345 89.63 206.345L139.87 234.775V285.065L43.67 229.705V60.135ZM244.75 229.705L148.58 285.075V234.775L219.8 194.115L244.75 179.875V229.705ZM297.2 139.625L253.49 164.795V114.995L278.85 100.395L297.21 89.825V139.625H297.2Z"/>
++</svg>
+Index: laravel_failai/resources/views/components/auth-session-status.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/auth-session-status.blade.php b/laravel_failai/resources/views/components/auth-session-status.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/auth-session-status.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,7 @@
++@props(['status'])
++
++@if ($status)
++    <div {{ $attributes->merge(['class' => 'font-medium text-sm text-green-600 dark:text-green-400']) }}>
++        {{ $status }}
++    </div>
++@endif
+Index: laravel_failai/resources/views/components/danger-button.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/danger-button.blade.php b/laravel_failai/resources/views/components/danger-button.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/danger-button.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++<button {{ $attributes->merge(['type' => 'submit', 'class' => 'inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150']) }}>
++    {{ $slot }}
++</button>
+Index: laravel_failai/resources/views/components/dropdown-link.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/dropdown-link.blade.php b/laravel_failai/resources/views/components/dropdown-link.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/dropdown-link.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,1 @@
++<a {{ $attributes->merge(['class' => 'block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 transition duration-150 ease-in-out']) }}>{{ $slot }}</a>
+Index: laravel_failai/resources/views/components/dropdown.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/dropdown.blade.php b/laravel_failai/resources/views/components/dropdown.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/dropdown.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,43 @@
++@props(['align' => 'right', 'width' => '48', 'contentClasses' => 'py-1 bg-white dark:bg-gray-700'])
++
++@php
++switch ($align) {
++    case 'left':
++        $alignmentClasses = 'origin-top-left left-0';
++        break;
++    case 'top':
++        $alignmentClasses = 'origin-top';
++        break;
++    case 'right':
++    default:
++        $alignmentClasses = 'origin-top-right right-0';
++        break;
++}
++
++switch ($width) {
++    case '48':
++        $width = 'w-48';
++        break;
++}
++@endphp
++
++<div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
++    <div @click="open = ! open">
++        {{ $trigger }}
++    </div>
++
++    <div x-show="open"
++            x-transition:enter="transition ease-out duration-200"
++            x-transition:enter-start="transform opacity-0 scale-95"
++            x-transition:enter-end="transform opacity-100 scale-100"
++            x-transition:leave="transition ease-in duration-75"
++            x-transition:leave-start="transform opacity-100 scale-100"
++            x-transition:leave-end="transform opacity-0 scale-95"
++            class="absolute z-50 mt-2 {{ $width }} rounded-md shadow-lg {{ $alignmentClasses }}"
++            style="display: none;"
++            @click="open = false">
++        <div class="rounded-md ring-1 ring-black ring-opacity-5 {{ $contentClasses }}">
++            {{ $content }}
++        </div>
++    </div>
++</div>
+Index: laravel_failai/resources/views/components/input-error.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/input-error.blade.php b/laravel_failai/resources/views/components/input-error.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/input-error.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,9 @@
++@props(['messages'])
++
++@if ($messages)
++    <ul {{ $attributes->merge(['class' => 'text-sm text-red-600 dark:text-red-400 space-y-1']) }}>
++        @foreach ((array) $messages as $message)
++            <li>{{ $message }}</li>
++        @endforeach
++    </ul>
++@endif
+Index: laravel_failai/resources/views/components/input-label.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/input-label.blade.php b/laravel_failai/resources/views/components/input-label.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/input-label.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,5 @@
++@props(['value'])
++
++<label {{ $attributes->merge(['class' => 'block font-medium text-sm text-gray-700 dark:text-gray-300']) }}>
++    {{ $value ?? $slot }}
++</label>
+Index: laravel_failai/resources/views/components/modal.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/modal.blade.php b/laravel_failai/resources/views/components/modal.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/modal.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,77 @@
++@props([
++    'name',
++    'show' => false,
++    'maxWidth' => '2xl'
++])
++
++@php
++$maxWidth = [
++    'sm' => 'sm:max-w-sm',
++    'md' => 'sm:max-w-md',
++    'lg' => 'sm:max-w-lg',
++    'xl' => 'sm:max-w-xl',
++    '2xl' => 'sm:max-w-2xl',
++][$maxWidth];
++@endphp
++
++<div
++    x-data="{
++        show: @js($show),
++        focusables() {
++            // All focusable element types...
++            let selector = 'a, button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]:not([tabindex=\'-1\'])'
++            return [...$el.querySelectorAll(selector)]
++                // All non-disabled elements...
++                .filter(el => ! el.hasAttribute('disabled'))
++        },
++        firstFocusable() { return this.focusables()[0] },
++        lastFocusable() { return this.focusables().slice(-1)[0] },
++        nextFocusable() { return this.focusables()[this.nextFocusableIndex()] || this.firstFocusable() },
++        prevFocusable() { return this.focusables()[this.prevFocusableIndex()] || this.lastFocusable() },
++        nextFocusableIndex() { return (this.focusables().indexOf(document.activeElement) + 1) % (this.focusables().length + 1) },
++        prevFocusableIndex() { return Math.max(0, this.focusables().indexOf(document.activeElement)) -1 },
++    }"
++    x-init="$watch('show', value => {
++        if (value) {
++            document.body.classList.add('overflow-y-hidden');
++            {{ $attributes->has('focusable') ? 'setTimeout(() => firstFocusable().focus(), 100)' : '' }}
++        } else {
++            document.body.classList.remove('overflow-y-hidden');
++        }
++    })"
++    x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
++    x-on:close.stop="show = false"
++    x-on:keydown.escape.window="show = false"
++    x-on:keydown.tab.prevent="$event.shiftKey || nextFocusable().focus()"
++    x-on:keydown.shift.tab.prevent="prevFocusable().focus()"
++    x-show="show"
++    class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50"
++    style="display: {{ $show ? 'block' : 'none' }};"
++>
++    <div
++        x-show="show"
++        class="fixed inset-0 transform transition-all"
++        x-on:click="show = false"
++        x-transition:enter="ease-out duration-300"
++        x-transition:enter-start="opacity-0"
++        x-transition:enter-end="opacity-100"
++        x-transition:leave="ease-in duration-200"
++        x-transition:leave-start="opacity-100"
++        x-transition:leave-end="opacity-0"
++    >
++        <div class="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
++    </div>
++
++    <div
++        x-show="show"
++        class="mb-6 bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
++        x-transition:enter="ease-out duration-300"
++        x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
++        x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
++        x-transition:leave="ease-in duration-200"
++        x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
++        x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
++    >
++        {{ $slot }}
++    </div>
++</div>
+Index: laravel_failai/resources/views/components/nav-link.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/nav-link.blade.php b/laravel_failai/resources/views/components/nav-link.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/nav-link.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,11 @@
++@props(['active'])
++
++@php
++$classes = ($active ?? false)
++            ? 'inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 dark:border-indigo-600 text-sm font-medium leading-5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out'
++            : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:outline-none focus:text-gray-700 dark:focus:text-gray-300 focus:border-gray-300 dark:focus:border-gray-700 transition duration-150 ease-in-out';
++@endphp
++
++<a {{ $attributes->merge(['class' => $classes]) }}>
++    {{ $slot }}
++</a>
+Index: laravel_failai/resources/views/components/primary-button.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/primary-button.blade.php b/laravel_failai/resources/views/components/primary-button.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/primary-button.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++<button {{ $attributes->merge(['type' => 'submit', 'class' => 'inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150']) }}>
++    {{ $slot }}
++</button>
+Index: laravel_failai/resources/views/components/responsive-nav-link.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/responsive-nav-link.blade.php b/laravel_failai/resources/views/components/responsive-nav-link.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/responsive-nav-link.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,11 @@
++@props(['active'])
++
++@php
++$classes = ($active ?? false)
++            ? 'block w-full pl-3 pr-4 py-2 border-l-4 border-indigo-400 dark:border-indigo-600 text-left text-base font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 focus:outline-none focus:text-indigo-800 dark:focus:text-indigo-200 focus:bg-indigo-100 dark:focus:bg-indigo-900 focus:border-indigo-700 dark:focus:border-indigo-300 transition duration-150 ease-in-out'
++            : 'block w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:text-gray-800 dark:focus:text-gray-200 focus:bg-gray-50 dark:focus:bg-gray-700 focus:border-gray-300 dark:focus:border-gray-600 transition duration-150 ease-in-out';
++@endphp
++
++<a {{ $attributes->merge(['class' => $classes]) }}>
++    {{ $slot }}
++</a>
+Index: laravel_failai/resources/views/components/secondary-button.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/secondary-button.blade.php b/laravel_failai/resources/views/components/secondary-button.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/secondary-button.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++<button {{ $attributes->merge(['type' => 'button', 'class' => 'inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150']) }}>
++    {{ $slot }}
++</button>
+Index: laravel_failai/resources/views/components/text-input.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/components/text-input.blade.php b/laravel_failai/resources/views/components/text-input.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/components/text-input.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,3 @@
++@props(['disabled' => false])
++
++<input {{ $disabled ? 'disabled' : '' }} {!! $attributes->merge(['class' => 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm']) !!}>
+Index: laravel_failai/resources/views/layouts/admin/main.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/layouts/admin/main.blade.php b/laravel_failai/resources/views/layouts/admin/main.blade.php
+--- a/laravel_failai/resources/views/layouts/admin/main.blade.php	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/resources/views/layouts/admin/main.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -1,8 +1,12 @@
+ <!DOCTYPE html>
+-<html lang="en">
++<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+ <head>
+-    <meta charset="UTF-8">
+-    <title>@yield('title', 'Default page tile')</title>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <meta name="csrf-token" content="{{ csrf_token() }}">
++
++    <title>@yield('title', config('app.name', 'E-Shop'))</title>
++
+     <!--Let browser know website is optimized for mobile-->
+     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     <link rel="icon" type="image/svg+xml" href="{{asset('favicon.svg')}}">
+Index: laravel_failai/resources/views/layouts/admin/navigation.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/layouts/admin/navigation.blade.php b/laravel_failai/resources/views/layouts/admin/navigation.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/layouts/admin/navigation.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,100 @@
++<nav x-data="{ open: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
++    <!-- Primary Navigation Menu -->
++    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
++        <div class="flex justify-between h-16">
++            <div class="flex">
++                <!-- Logo -->
++                <div class="shrink-0 flex items-center">
++                    <a href="{{ route('dashboard') }}">
++{{--                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />--}}
++                    </a>
++                </div>
++
++                <!-- Navigation Links -->
++                <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
++                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
++                        {{ __('Dashboard') }}
++                    </x-nav-link>
++                </div>
++            </div>
++
++            <!-- Settings Dropdown -->
++            <div class="hidden sm:flex sm:items-center sm:ml-6">
++                <x-dropdown align="right" width="48">
++                    <x-slot name="trigger">
++                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
++                            <div>{{ Auth::user()->name }}</div>
++
++                            <div class="ml-1">
++                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
++                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
++                                </svg>
++                            </div>
++                        </button>
++                    </x-slot>
++
++                    <x-slot name="content">
++                        <x-dropdown-link :href="route('profile.edit')">
++                            {{ __('Profile') }}
++                        </x-dropdown-link>
++
++                        <!-- Authentication -->
++                        <form method="POST" action="{{ route('logout') }}">
++                            @csrf
++
++                            <x-dropdown-link :href="route('logout')"
++                                    onclick="event.preventDefault();
++                                                this.closest('form').submit();">
++                                {{ __('Log Out') }}
++                            </x-dropdown-link>
++                        </form>
++                    </x-slot>
++                </x-dropdown>
++            </div>
++
++            <!-- Hamburger -->
++            <div class="-mr-2 flex items-center sm:hidden">
++                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out">
++                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
++                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
++                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
++                    </svg>
++                </button>
++            </div>
++        </div>
++    </div>
++
++    <!-- Responsive Navigation Menu -->
++    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
++        <div class="pt-2 pb-3 space-y-1">
++            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
++                {{ __('Dashboard') }}
++            </x-responsive-nav-link>
++        </div>
++
++        <!-- Responsive Settings Options -->
++        <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
++            <div class="px-4">
++                <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
++                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
++            </div>
++
++            <div class="mt-3 space-y-1">
++                <x-responsive-nav-link :href="route('profile.edit')">
++                    {{ __('Profile') }}
++                </x-responsive-nav-link>
++
++                <!-- Authentication -->
++                <form method="POST" action="{{ route('logout') }}">
++                    @csrf
++
++                    <x-responsive-nav-link :href="route('logout')"
++                            onclick="event.preventDefault();
++                                        this.closest('form').submit();">
++                        {{ __('Log Out') }}
++                    </x-responsive-nav-link>
++                </form>
++            </div>
++        </div>
++    </div>
++</nav>
+Index: laravel_failai/resources/views/profile/edit.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/profile/edit.blade.php b/laravel_failai/resources/views/profile/edit.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/profile/edit.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,33 @@
++@extends('layouts.admin.main')
++
++@section('title', 'Profile')
++
++@section('content')
++    <x-slot name="header">
++        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
++            {{ __('Profile') }}
++        </h2>
++    </x-slot>
++
++    <div class="py-12">
++        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
++            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
++                <div class="max-w-xl">
++                    @include('profile.partials.update-profile-information-form')
++                </div>
++            </div>
++
++            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
++                <div class="max-w-xl">
++                    @include('profile.partials.update-password-form')
++                </div>
++            </div>
++
++            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
++                <div class="max-w-xl">
++                    @include('profile.partials.delete-user-form')
++                </div>
++            </div>
++        </div>
++    </div>
++@endsection
+Index: laravel_failai/resources/views/profile/partials/delete-user-form.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/profile/partials/delete-user-form.blade.php b/laravel_failai/resources/views/profile/partials/delete-user-form.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/profile/partials/delete-user-form.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,55 @@
++<section class="space-y-6">
++    <header>
++        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
++            {{ __('Delete Account') }}
++        </h2>
++
++        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
++            {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
++        </p>
++    </header>
++
++    <x-danger-button
++        x-data=""
++        x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
++    >{{ __('Delete Account') }}</x-danger-button>
++
++    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
++        <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
++            @csrf
++            @method('delete')
++
++            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
++                {{ __('Are you sure you want to delete your account?') }}
++            </h2>
++
++            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
++                {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
++            </p>
++
++            <div class="mt-6">
++                <x-input-label for="password" value="{{ __('Password') }}" class="sr-only" />
++
++                <x-text-input
++                    id="password"
++                    name="password"
++                    type="password"
++                    class="mt-1 block w-3/4"
++                    placeholder="{{ __('Password') }}"
++                />
++
++                <x-input-error :messages="$errors->userDeletion->get('password')" class="mt-2" />
++            </div>
++
++            <div class="mt-6 flex justify-end">
++                <x-secondary-button x-on:click="$dispatch('close')">
++                    {{ __('Cancel') }}
++                </x-secondary-button>
++
++                <x-danger-button class="ml-3">
++                    {{ __('Delete Account') }}
++                </x-danger-button>
++            </div>
++        </form>
++    </x-modal>
++</section>
+Index: laravel_failai/resources/views/profile/partials/update-password-form.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/profile/partials/update-password-form.blade.php b/laravel_failai/resources/views/profile/partials/update-password-form.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/profile/partials/update-password-form.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,48 @@
++<section>
++    <header>
++        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
++            {{ __('Update Password') }}
++        </h2>
++
++        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
++            {{ __('Ensure your account is using a long, random password to stay secure.') }}
++        </p>
++    </header>
++
++    <form method="post" action="{{ route('password.update') }}" class="mt-6 space-y-6">
++        @csrf
++        @method('put')
++
++        <div>
++            <x-input-label for="current_password" :value="__('Current Password')" />
++            <x-text-input id="current_password" name="current_password" type="password" class="mt-1 block w-full" autocomplete="current-password" />
++            <x-input-error :messages="$errors->updatePassword->get('current_password')" class="mt-2" />
++        </div>
++
++        <div>
++            <x-input-label for="password" :value="__('New Password')" />
++            <x-text-input id="password" name="password" type="password" class="mt-1 block w-full" autocomplete="new-password" />
++            <x-input-error :messages="$errors->updatePassword->get('password')" class="mt-2" />
++        </div>
++
++        <div>
++            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
++            <x-text-input id="password_confirmation" name="password_confirmation" type="password" class="mt-1 block w-full" autocomplete="new-password" />
++            <x-input-error :messages="$errors->updatePassword->get('password_confirmation')" class="mt-2" />
++        </div>
++
++        <div class="flex items-center gap-4">
++            <x-primary-button>{{ __('Save') }}</x-primary-button>
++
++            @if (session('status') === 'password-updated')
++                <p
++                    x-data="{ show: true }"
++                    x-show="show"
++                    x-transition
++                    x-init="setTimeout(() => show = false, 2000)"
++                    class="text-sm text-gray-600 dark:text-gray-400"
++                >{{ __('Saved.') }}</p>
++            @endif
++        </div>
++    </form>
++</section>
+Index: laravel_failai/resources/views/profile/partials/update-profile-information-form.blade.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/resources/views/profile/partials/update-profile-information-form.blade.php b/laravel_failai/resources/views/profile/partials/update-profile-information-form.blade.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/resources/views/profile/partials/update-profile-information-form.blade.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,64 @@
++<section>
++    <header>
++        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
++            {{ __('Profile Information') }}
++        </h2>
++
++        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
++            {{ __("Update your account's profile information and email address.") }}
++        </p>
++    </header>
++
++    <form id="send-verification" method="post" action="{{ route('verification.send') }}">
++        @csrf
++    </form>
++
++    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
++        @csrf
++        @method('patch')
++
++        <div>
++            <x-input-label for="name" :value="__('Name')" />
++            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
++            <x-input-error class="mt-2" :messages="$errors->get('name')" />
++        </div>
++
++        <div>
++            <x-input-label for="email" :value="__('Email')" />
++            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
++            <x-input-error class="mt-2" :messages="$errors->get('email')" />
++
++            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
++                <div>
++                    <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
++                        {{ __('Your email address is unverified.') }}
++
++                        <button form="send-verification" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
++                            {{ __('Click here to re-send the verification email.') }}
++                        </button>
++                    </p>
++
++                    @if (session('status') === 'verification-link-sent')
++                        <p class="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
++                            {{ __('A new verification link has been sent to your email address.') }}
++                        </p>
++                    @endif
++                </div>
++            @endif
++        </div>
++
++        <div class="flex items-center gap-4">
++            <x-primary-button>{{ __('Save') }}</x-primary-button>
++
++            @if (session('status') === 'profile-updated')
++                <p
++                    x-data="{ show: true }"
++                    x-show="show"
++                    x-transition
++                    x-init="setTimeout(() => show = false, 2000)"
++                    class="text-sm text-gray-600 dark:text-gray-400"
++                >{{ __('Saved.') }}</p>
++            @endif
++        </div>
++    </form>
++</section>
+Index: laravel_failai/routes/auth.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/routes/auth.php b/laravel_failai/routes/auth.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/routes/auth.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,59 @@
++<?php
++
++use App\Http\Controllers\Auth\AuthenticatedSessionController;
++use App\Http\Controllers\Auth\ConfirmablePasswordController;
++use App\Http\Controllers\Auth\EmailVerificationNotificationController;
++use App\Http\Controllers\Auth\EmailVerificationPromptController;
++use App\Http\Controllers\Auth\NewPasswordController;
++use App\Http\Controllers\Auth\PasswordController;
++use App\Http\Controllers\Auth\PasswordResetLinkController;
++use App\Http\Controllers\Auth\RegisteredUserController;
++use App\Http\Controllers\Auth\VerifyEmailController;
++use Illuminate\Support\Facades\Route;
++
++Route::middleware('guest')->group(function () {
++    Route::get('register', [RegisteredUserController::class, 'create'])
++                ->name('register');
++
++    Route::post('register', [RegisteredUserController::class, 'store']);
++
++    Route::get('login', [AuthenticatedSessionController::class, 'create'])
++                ->name('login');
++
++    Route::post('login', [AuthenticatedSessionController::class, 'store']);
++
++    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
++                ->name('password.request');
++
++    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
++                ->name('password.email');
++
++    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
++                ->name('password.reset');
++
++    Route::post('reset-password', [NewPasswordController::class, 'store'])
++                ->name('password.store');
++});
++
++Route::middleware('auth')->group(function () {
++    Route::get('verify-email', EmailVerificationPromptController::class)
++                ->name('verification.notice');
++
++    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
++                ->middleware(['signed', 'throttle:6,1'])
++                ->name('verification.verify');
++
++    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
++                ->middleware('throttle:6,1')
++                ->name('verification.send');
++
++    Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
++                ->name('password.confirm');
++
++    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
++
++    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
++
++    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
++                ->name('logout');
++});
+Index: laravel_failai/routes/web.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/routes/web.php b/laravel_failai/routes/web.php
+--- a/laravel_failai/routes/web.php	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/routes/web.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -14,14 +14,15 @@
+ use App\Http\Controllers\ProductController;
+ use App\Http\Middleware\SetLocale;
+ use Illuminate\Support\Facades\Route;
++use App\Http\Controllers\ProfileController;
+ 
+ Route::group(['middleware' => SetLocale::class], function () {
+     Route::get('/', HomeController::class);
+     Route::get('/product/{product:slug}', [ProductController::class, 'show'])->name('product.show');
+     Route::get('/category/{category:slug}', [CategoryController::class, 'show'])->name('category.show');
+ 
+-    Route::group(['prefix' => 'admin'], function () {
+-        Route::get('/', DashBoardController::class)->name('admin.dashboard');
++    Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'verified']], function () {
++        Route::get('/', DashBoardController::class)->name('dashboard');
+         Route::delete('/product/file/{file}', [ProductsController::class, 'destroyFile'])->name('product.destroy-file');
+         Route::resources([
+             'products'     => ProductsController::class,
+@@ -36,4 +37,11 @@
+     });
+ });
+ 
++Route::middleware('auth')->group(function () {
++    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
++    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
++    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
++});
++
++require __DIR__ . '/auth.php';
+ 
+Index: laravel_failai/tailwind.config.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tailwind.config.js b/laravel_failai/tailwind.config.js
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tailwind.config.js	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,20 @@
++const defaultTheme = require('tailwindcss/defaultTheme');
++
++/** @type {import('tailwindcss').Config} */
++module.exports = {
++    content: [
++        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
++        './storage/framework/views/*.php',
++        './resources/views/**/*.blade.php',
++    ],
++
++    theme: {
++        extend: {
++            fontFamily: {
++                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
++            },
++        },
++    },
++
++    plugins: [require('@tailwindcss/forms')],
++};
+Index: laravel_failai/tests/Feature/Auth/AuthenticationTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/AuthenticationTest.php b/laravel_failai/tests/Feature/Auth/AuthenticationTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/AuthenticationTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,45 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Models\User;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class AuthenticationTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_login_screen_can_be_rendered(): void
++    {
++        $response = $this->get('/login');
++
++        $response->assertStatus(200);
++    }
++
++    public function test_users_can_authenticate_using_the_login_screen(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this->post('/login', [
++            'email' => $user->email,
++            'password' => 'password',
++        ]);
++
++        $this->assertAuthenticated();
++        $response->assertRedirect(RouteServiceProvider::HOME);
++    }
++
++    public function test_users_can_not_authenticate_with_invalid_password(): void
++    {
++        $user = User::factory()->create();
++
++        $this->post('/login', [
++            'email' => $user->email,
++            'password' => 'wrong-password',
++        ]);
++
++        $this->assertGuest();
++    }
++}
+Index: laravel_failai/tests/Feature/Auth/EmailVerificationTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/EmailVerificationTest.php b/laravel_failai/tests/Feature/Auth/EmailVerificationTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/EmailVerificationTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,65 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Models\User;
++use App\Providers\RouteServiceProvider;
++use Illuminate\Auth\Events\Verified;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Event;
++use Illuminate\Support\Facades\URL;
++use Tests\TestCase;
++
++class EmailVerificationTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_email_verification_screen_can_be_rendered(): void
++    {
++        $user = User::factory()->create([
++            'email_verified_at' => null,
++        ]);
++
++        $response = $this->actingAs($user)->get('/verify-email');
++
++        $response->assertStatus(200);
++    }
++
++    public function test_email_can_be_verified(): void
++    {
++        $user = User::factory()->create([
++            'email_verified_at' => null,
++        ]);
++
++        Event::fake();
++
++        $verificationUrl = URL::temporarySignedRoute(
++            'verification.verify',
++            now()->addMinutes(60),
++            ['id' => $user->id, 'hash' => sha1($user->email)]
++        );
++
++        $response = $this->actingAs($user)->get($verificationUrl);
++
++        Event::assertDispatched(Verified::class);
++        $this->assertTrue($user->fresh()->hasVerifiedEmail());
++        $response->assertRedirect(RouteServiceProvider::HOME.'?verified=1');
++    }
++
++    public function test_email_is_not_verified_with_invalid_hash(): void
++    {
++        $user = User::factory()->create([
++            'email_verified_at' => null,
++        ]);
++
++        $verificationUrl = URL::temporarySignedRoute(
++            'verification.verify',
++            now()->addMinutes(60),
++            ['id' => $user->id, 'hash' => sha1('wrong-email')]
++        );
++
++        $this->actingAs($user)->get($verificationUrl);
++
++        $this->assertFalse($user->fresh()->hasVerifiedEmail());
++    }
++}
+Index: laravel_failai/tests/Feature/Auth/PasswordConfirmationTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/PasswordConfirmationTest.php b/laravel_failai/tests/Feature/Auth/PasswordConfirmationTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/PasswordConfirmationTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,44 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class PasswordConfirmationTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_confirm_password_screen_can_be_rendered(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this->actingAs($user)->get('/confirm-password');
++
++        $response->assertStatus(200);
++    }
++
++    public function test_password_can_be_confirmed(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this->actingAs($user)->post('/confirm-password', [
++            'password' => 'password',
++        ]);
++
++        $response->assertRedirect();
++        $response->assertSessionHasNoErrors();
++    }
++
++    public function test_password_is_not_confirmed_with_invalid_password(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this->actingAs($user)->post('/confirm-password', [
++            'password' => 'wrong-password',
++        ]);
++
++        $response->assertSessionHasErrors();
++    }
++}
+Index: laravel_failai/tests/Feature/Auth/PasswordResetTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/PasswordResetTest.php b/laravel_failai/tests/Feature/Auth/PasswordResetTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/PasswordResetTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,71 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Models\User;
++use Illuminate\Auth\Notifications\ResetPassword;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Notification;
++use Tests\TestCase;
++
++class PasswordResetTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_reset_password_link_screen_can_be_rendered(): void
++    {
++        $response = $this->get('/forgot-password');
++
++        $response->assertStatus(200);
++    }
++
++    public function test_reset_password_link_can_be_requested(): void
++    {
++        Notification::fake();
++
++        $user = User::factory()->create();
++
++        $this->post('/forgot-password', ['email' => $user->email]);
++
++        Notification::assertSentTo($user, ResetPassword::class);
++    }
++
++    public function test_reset_password_screen_can_be_rendered(): void
++    {
++        Notification::fake();
++
++        $user = User::factory()->create();
++
++        $this->post('/forgot-password', ['email' => $user->email]);
++
++        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
++            $response = $this->get('/reset-password/'.$notification->token);
++
++            $response->assertStatus(200);
++
++            return true;
++        });
++    }
++
++    public function test_password_can_be_reset_with_valid_token(): void
++    {
++        Notification::fake();
++
++        $user = User::factory()->create();
++
++        $this->post('/forgot-password', ['email' => $user->email]);
++
++        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
++            $response = $this->post('/reset-password', [
++                'token' => $notification->token,
++                'email' => $user->email,
++                'password' => 'password',
++                'password_confirmation' => 'password',
++            ]);
++
++            $response->assertSessionHasNoErrors();
++
++            return true;
++        });
++    }
++}
+Index: laravel_failai/tests/Feature/Auth/PasswordUpdateTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/PasswordUpdateTest.php b/laravel_failai/tests/Feature/Auth/PasswordUpdateTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/PasswordUpdateTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,51 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Hash;
++use Tests\TestCase;
++
++class PasswordUpdateTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_password_can_be_updated(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->from('/profile')
++            ->put('/password', [
++                'current_password' => 'password',
++                'password' => 'new-password',
++                'password_confirmation' => 'new-password',
++            ]);
++
++        $response
++            ->assertSessionHasNoErrors()
++            ->assertRedirect('/profile');
++
++        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
++    }
++
++    public function test_correct_password_must_be_provided_to_update_password(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->from('/profile')
++            ->put('/password', [
++                'current_password' => 'wrong-password',
++                'password' => 'new-password',
++                'password_confirmation' => 'new-password',
++            ]);
++
++        $response
++            ->assertSessionHasErrorsIn('updatePassword', 'current_password')
++            ->assertRedirect('/profile');
++    }
++}
+Index: laravel_failai/tests/Feature/Auth/RegistrationTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/Auth/RegistrationTest.php b/laravel_failai/tests/Feature/Auth/RegistrationTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/Auth/RegistrationTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,32 @@
++<?php
++
++namespace Tests\Feature\Auth;
++
++use App\Providers\RouteServiceProvider;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class RegistrationTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_registration_screen_can_be_rendered(): void
++    {
++        $response = $this->get('/register');
++
++        $response->assertStatus(200);
++    }
++
++    public function test_new_users_can_register(): void
++    {
++        $response = $this->post('/register', [
++            'name' => 'Test User',
++            'email' => 'test@example.com',
++            'password' => 'password',
++            'password_confirmation' => 'password',
++        ]);
++
++        $this->assertAuthenticated();
++        $response->assertRedirect(RouteServiceProvider::HOME);
++    }
++}
+Index: laravel_failai/tests/Feature/ProfileTest.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/tests/Feature/ProfileTest.php b/laravel_failai/tests/Feature/ProfileTest.php
+new file mode 100644
+--- /dev/null	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
++++ b/laravel_failai/tests/Feature/ProfileTest.php	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -0,0 +1,99 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class ProfileTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_profile_page_is_displayed(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->get('/profile');
++
++        $response->assertOk();
++    }
++
++    public function test_profile_information_can_be_updated(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->patch('/profile', [
++                'name' => 'Test User',
++                'email' => 'test@example.com',
++            ]);
++
++        $response
++            ->assertSessionHasNoErrors()
++            ->assertRedirect('/profile');
++
++        $user->refresh();
++
++        $this->assertSame('Test User', $user->name);
++        $this->assertSame('test@example.com', $user->email);
++        $this->assertNull($user->email_verified_at);
++    }
++
++    public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->patch('/profile', [
++                'name' => 'Test User',
++                'email' => $user->email,
++            ]);
++
++        $response
++            ->assertSessionHasNoErrors()
++            ->assertRedirect('/profile');
++
++        $this->assertNotNull($user->refresh()->email_verified_at);
++    }
++
++    public function test_user_can_delete_their_account(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->delete('/profile', [
++                'password' => 'password',
++            ]);
++
++        $response
++            ->assertSessionHasNoErrors()
++            ->assertRedirect('/');
++
++        $this->assertGuest();
++        $this->assertNull($user->fresh());
++    }
++
++    public function test_correct_password_must_be_provided_to_delete_account(): void
++    {
++        $user = User::factory()->create();
++
++        $response = $this
++            ->actingAs($user)
++            ->from('/profile')
++            ->delete('/profile', [
++                'password' => 'wrong-password',
++            ]);
++
++        $response
++            ->assertSessionHasErrorsIn('userDeletion', 'password')
++            ->assertRedirect('/profile');
++
++        $this->assertNotNull($user->fresh());
++    }
++}
+Index: laravel_failai/vite.config.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/laravel_failai/vite.config.js b/laravel_failai/vite.config.js
+--- a/laravel_failai/vite.config.js	(revision 8322146dd3b2653fce0af6b4499f1f1d47eefcd1)
++++ b/laravel_failai/vite.config.js	(revision 8b3543fc7ebc8bc4d387bc23a8eee29b67203f93)
+@@ -4,7 +4,10 @@
+ export default defineConfig({
+     plugins: [
+         laravel({
+-            input: ['resources/css/app.css', 'resources/js/app.js'],
++            input: [
++                'resources/css/app.css',
++                'resources/js/app.js',
++            ],
+             refresh: true,
+         }),
+     ],

@@ -13,6 +13,7 @@
       <excludeFolder url="file://$MODULE_DIR$/laravel_file/vendor/doctrine/dbal" />
       <excludeFolder url="file://$MODULE_DIR$/laravel_file/vendor/doctrine/event-manager" />
       <excludeFolder url="file://$MODULE_DIR$/laravel_file/vendor/doctrine/cache" />
+      <excludeFolder url="file://$MODULE_DIR$/laravel_file/vendor/laravel/breeze" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

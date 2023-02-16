@@ -27,6 +27,19 @@ services:
       MYSQL_USER: devuser
       MYSQL_PASSWORD: devpass
 
+  node:
+    image: "node:8"
+    user: "node"
+    working_dir: /var/www/html/
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./laravel_filai:/var/www/html/
+    expose:
+      - "8081"
+    command:
+    - "npn install"
+
 volumes:
   myapp:
     external: false
